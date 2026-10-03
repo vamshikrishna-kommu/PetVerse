@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  # ─── MongoDB (Replica Set enabled for ACID Transactions) ──
+  mongodb:
+    image: mongo:7.0
+    container_name: petverse_mongodb
+    restart: unless-stopped
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - petverse_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ─── Replica Set Initiator ─────────────────────────────────
+  mongo-init:
+    image: mongo:7.0
+    container_name: petverse_mongo_init
+    restart: "no"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - petverse_network
+    command: >
+      mongosh --host mongodb:27017 --eval '
+        try {
+          rs.status();
+          console.log("Replica set already initialized.");
+        } catch (e) {
+          console.log("Initiating replica set rs0...");
+          rs.initiate({
+            _id: "rs0",
+            members: [{ _id: 0, host: "mongodb:27017" }]
+          });
+        }
+      '
+
+  # ─── Redis (Cache & Worker Queue) ──────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: petverse_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - petverse_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ─── PetVerse Backend API ──────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: petverse_api
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - FRONTEND_URL=http://localhost
+      - MONGODB_URI=mongodb://mongodb:27017/petverse?replicaSet=rs0
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=change_me_to_a_secure_production_key_32chars_min
+      - JWT_REFRESH_SECRET=change_me_to_a_different_secure_refresh_key_32chars
+      - BCRYPT_ROUNDS=12
+      - RATE_LIMIT_GLOBAL_MAX=300
+      - RATE_LIMIT_AUTH_MAX=20
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
+    networks:
+      - petverse_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # ─── PetVerse Frontend Web (Nginx SPA) ─────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: petverse_web
+    restart: unless-stopped
+    ports:
+      - '80:80'
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - petverse_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  petverse_network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  redis_data:

@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment files — never commit real secrets or environment files
+.env
+.env.*
+!.env.example
+!apps/api/.env.example
+!apps/web/.env.example
+
+# Credentials, Keys, & Cloud Service Accounts
+*.pem
+*.key
+*.p12
+*.pfx
+service-account*.json
+firebase-adminsdk*.json
+credentials.json
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor files
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+
+# TypeScript build info
+*.tsbuildinfo
+
+# TurboRepo cache
+.turbo/
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+

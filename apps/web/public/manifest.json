@@ -1,0 +1,15 @@
+{
+  "short_name": "PetVerse",
+  "name": "PetVerse — Intelligent Pet Care Ecosystem",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "display": "standalone"
+}

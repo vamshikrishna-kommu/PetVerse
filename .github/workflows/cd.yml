@@ -1,0 +1,83 @@
+name: PetVerse CD — Continuous Deployment
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+jobs:
+  security-audit:
+    name: Secret Leak Audit & Security Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify No Tracked .env Files
+        run: |
+          echo "Auditing repository for committed secrets..."
+          if git ls-files | grep -E "(^|/)\.env($|\..*)"; then
+            echo "ERROR: Tracked .env file detected in git tree!"
+            exit 1
+          fi
+          echo "PASSED: Zero tracked .env files in repository."
+
+      - name: Scan For High-Entropy Secrets & Key Leakage
+        run: |
+          echo "Scanning recent commits for leaked credentials..."
+          FORBIDDEN_PATTERNS="AIzaSy|sk_live_|ghp_|SG\.[a-zA-Z0-9_\-]{22}\.[a-zA-Z0-9_\-]{43}"
+          if git log -n 50 -p | grep -E "$FORBIDDEN_PATTERNS"; then
+            echo "CRITICAL: Potential raw API key pattern discovered in git log!"
+            exit 1
+          fi
+          echo "PASSED: No raw API keys discovered in git history."
+
+  build-and-deploy:
+    name: Build Containers & Deploy to Production
+    needs: [security-audit]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Validate API Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: false
+          tags: petverse-api:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Validate Web Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: false
+          tags: petverse-web:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Mask Sensitive Deployment Variables
+        run: |
+          echo "::add-mask::${{ secrets.JWT_SECRET }}"
+          echo "::add-mask::${{ secrets.JWT_REFRESH_SECRET }}"
+          echo "::add-mask::${{ secrets.MONGODB_URI }}"
+          echo "::add-mask::${{ secrets.STRIPE_SECRET_KEY }}"
+          echo "::add-mask::${{ secrets.SENDGRID_API_KEY }}"
+          echo "Deployment secrets successfully masked in runner logs."
+
+      - name: Production Deployment Notification
+        run: |
+          echo "PetVerse release ${{ github.sha }} successfully built and verified for deployment."

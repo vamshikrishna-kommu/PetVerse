@@ -1,0 +1,81 @@
+name: PetVerse CI — Continuous Integration
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Lint, Typecheck, Test & Build
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      PORT: 3000
+      MONGODB_URI: mongodb://localhost:27017/petverse_test
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci_test_jwt_secret_must_be_32_characters_long_min
+      JWT_REFRESH_SECRET: ci_test_jwt_refresh_secret_32_characters_long_min
+      BCRYPT_ROUNDS: 4
+      RATE_LIMIT_GLOBAL_MAX: 1000
+      RATE_LIMIT_AUTH_MAX: 100
+
+    steps:
+      - name: 1. Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 2. Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: false
+
+      - name: 3. Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.14.4
+          run_install: false
+
+      - name: 4. Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: 5. Run Type-Check
+        run: pnpm run type-check
+
+      - name: 6. Run Linting
+        run: pnpm run lint
+
+      - name: 7. Run Test Suite (Unit, Integration, Component, E2E)
+        run: |
+          pnpm --filter @petverse/api run test -- --coverage
+          pnpm --filter @petverse/web run test -- --coverage
+
+      - name: 8. Build Production Bundles
+        run: pnpm run build
