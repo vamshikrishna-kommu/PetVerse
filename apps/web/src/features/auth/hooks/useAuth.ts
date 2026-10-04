@@ -37,7 +37,7 @@ export function useRegister() {
     onSuccess: (data) => {
       setUser(data.user);
       setAccessToken(data.accessToken);
-      navigate('/auth/verify');
+      navigate('/auth/verify', { state: { email: data.user.email } });
     },
   });
 }
