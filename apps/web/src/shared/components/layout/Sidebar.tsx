@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -28,6 +28,7 @@ import {
   MessageSquare,
   ShoppingBag,
   Heart,
+  X,
 } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 import { useUIStore } from '@/app/store/ui.store';
@@ -108,17 +109,27 @@ const ADMIN_NAV_GROUP: NavGroup = {
 };
 
 export default function Sidebar() {
-  const { sidebarOpen, sidebarCollapsed, toggleSidebarCollapsed } = useUIStore();
+  const { sidebarOpen, sidebarCollapsed, toggleSidebarCollapsed, setSidebarOpen } = useUIStore();
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 1024);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const navGroups = user?.role === 'admin'
     ? [...BASE_NAV_GROUPS, ADMIN_NAV_GROUP]
     : BASE_NAV_GROUPS;
 
+  const effectiveCollapsed = isMobile ? false : sidebarCollapsed;
+
   return (
     <motion.aside
-      animate={{ width: sidebarCollapsed ? 68 : 260 }}
+      animate={{ width: effectiveCollapsed ? 68 : 280 }}
       transition={{ duration: 0.25, ease: 'easeInOut' }}
       className={cn(
         'fixed left-0 top-0 z-50 flex h-full flex-col border-r border-border bg-surface shadow-sm',
@@ -126,50 +137,73 @@ export default function Sidebar() {
         sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       )}
     >
-      {/* Logo */}
+      {/* Logo & Mobile Close */}
       <div 
-        onClick={() => navigate('/dashboard')}
-        className="flex h-navbar items-center gap-3 border-b border-border px-4 cursor-pointer hover:bg-surface-2/40 transition-colors"
+        className="flex h-navbar items-center justify-between border-b border-border px-4"
       >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary shadow-md shadow-primary/30">
-          <PawPrint className="h-5 w-5 text-white" />
+        <div 
+          onClick={() => {
+            navigate('/dashboard');
+            if (isMobile) setSidebarOpen(false);
+          }}
+          className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary shadow-md shadow-primary/30">
+            <PawPrint className="h-5 w-5 text-white" />
+          </div>
+          <AnimatePresence>
+            {!effectiveCollapsed && (
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.15 }}
+                className="overflow-hidden"
+              >
+                <p className="text-sm font-bold text-foreground">PetVerse</p>
+                <p className="text-xs text-muted">Pet Care Ecosystem</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-        <AnimatePresence>
-          {!sidebarCollapsed && (
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.15 }}
-              className="overflow-hidden"
-            >
-              <p className="text-sm font-bold text-foreground">PetVerse</p>
-              <p className="text-xs text-muted">Pet Care Ecosystem</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+
+        {/* Mobile close button */}
+        <button
+          onClick={() => setSidebarOpen(false)}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-foreground lg:hidden"
+          aria-label="Close navigation"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto scrollbar-hide px-3 py-4 space-y-4">
         {navGroups.map((group) => (
           <div key={group.group} className="mb-4">
-            {!sidebarCollapsed && (
+            {!effectiveCollapsed && (
               <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-wider text-muted/70">
                 {group.group}
               </p>
             )}
             <div className="space-y-0.5">
               {group.items.map((item) => (
-                <SidebarLink key={item.href + item.label} item={item} collapsed={sidebarCollapsed} />
+                <SidebarLink 
+                  key={item.href + item.label} 
+                  item={item} 
+                  collapsed={effectiveCollapsed}
+                  onItemClick={() => {
+                    if (isMobile) setSidebarOpen(false);
+                  }}
+                />
               ))}
             </div>
           </div>
         ))}
       </nav>
 
-      {/* Collapse toggle */}
-      <div className="border-t border-border p-3">
+      {/* Collapse toggle (Desktop only) */}
+      <div className="hidden border-t border-border p-3 lg:block">
         <button
           onClick={toggleSidebarCollapsed}
           className="flex w-full items-center justify-center rounded-lg p-2 text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
@@ -192,9 +226,11 @@ export default function Sidebar() {
 function SidebarLink({
   item,
   collapsed,
+  onItemClick,
 }: {
   item: NavItem;
   collapsed: boolean;
+  onItemClick?: () => void;
 }) {
   const Icon = item.icon;
 
@@ -202,6 +238,7 @@ function SidebarLink({
     <NavLink
       to={item.href}
       title={collapsed ? item.label : undefined}
+      onClick={onItemClick}
       className={({ isActive }) =>
         cn(
           'relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-150',
@@ -234,3 +271,4 @@ function SidebarLink({
     </NavLink>
   );
 }
+

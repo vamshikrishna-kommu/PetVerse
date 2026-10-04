@@ -22,8 +22,8 @@ async function bootstrap() {
   reminderService.startWorker();
 
   const app = createApp();
-  const server = app.listen(PORT, () => {
-    logger.info(`✅ API running at http://localhost:${PORT}`);
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    logger.info(`✅ API running at http://0.0.0.0:${PORT}`);
     logger.info(`📋 Health: http://localhost:${PORT}/health`);
   });
 

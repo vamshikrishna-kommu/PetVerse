@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+import MobileBottomNav from './MobileBottomNav';
 import { useUIStore } from '@/app/store/ui.store';
 import { useRealtimeNotifications } from '@/shared/hooks/useRealtimeNotifications';
 import { cn } from '@/shared/utils/cn';
@@ -18,7 +19,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 1024);
+    const check = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      if (mobile && sidebarOpen) {
+        setSidebarOpen(false);
+      }
+    };
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
@@ -64,7 +71,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <Navbar />
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
@@ -79,6 +86,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </AnimatePresence>
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
     </div>
   );
 }
+

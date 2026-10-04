@@ -1,4 +1,4 @@
-import { env } from '../../../config/env';
+import { env, isConfiguredCredential } from '../../../config/env';
 import { logger } from '../../../shared/utils/logger';
 import { geminiClient } from './gemini.client';
 import type {
@@ -69,6 +69,20 @@ export interface ChatAssistantResult {
 const MEDICAL_DISCLAIMER =
   'IMPORTANT VETERINARY DISCLAIMER: This assessment is an AI-assisted informational guide and DOES NOT constitute a definitive veterinary diagnosis, prescription, or clinical treatment plan. If your pet exhibits severe symptoms or distress, immediately contact a licensed veterinarian or emergency veterinary clinic.';
 
+// ─── Startup Diagnostic ─────────────────────────────────────
+
+(function logAIEngineStatus() {
+  const geminiConfigured = isConfiguredCredential(env.GEMINI_API_KEY);
+  if (geminiConfigured) {
+    logger.info('[AIService] Gemini AI engine: CONFIGURED — live inference enabled');
+  } else {
+    logger.warn(
+      '[AIService] Gemini AI engine: NOT CONFIGURED — GEMINI_API_KEY is missing or is a placeholder. ' +
+        'All AI features will fall back to rule-based engines. Set a real GEMINI_API_KEY in apps/api/.env to enable live AI.'
+    );
+  }
+})();
+
 export const aiService = {
   /**
    * Analyze pet symptoms with clinical triage logic.
@@ -77,6 +91,7 @@ export const aiService = {
   async analyzeSymptoms(input: SymptomAnalysisInput): Promise<SymptomAnalysisResult> {
     const startTime = Date.now();
     logger.info('[AIService] Analyzing symptoms', {
+      geminiConfigured: isConfiguredCredential(env.GEMINI_API_KEY),
       species: input.species,
       symptomsCount: input.symptoms.length,
       severity: input.severity,
@@ -151,8 +166,10 @@ export const aiService = {
   async identifyBreed(input: BreedScanInput): Promise<BreedScanResult> {
     const startTime = Date.now();
     logger.info('[AIService] Initiating breed scan', {
+      geminiConfigured: isConfiguredCredential(env.GEMINI_API_KEY),
       species: input.species,
       hasImageUrl: Boolean(input.imageUrl),
+      hasImageBase64: Boolean(input.imageBase64),
     });
 
     try {
@@ -208,7 +225,7 @@ export const aiService = {
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
-      logger.warn('[AIService] External breed scan unavailable, using visual feature fallback', {
+      logger.warn('[AIService] Breed scan failed — Gemini unavailable and no external service configured', {
         latencyMs: Date.now() - startTime,
         error: message,
       });
@@ -455,64 +472,39 @@ export const aiService = {
     };
   },
 
+  /**
+   * Breed scan fallback — returned only when Gemini is unavailable.
+   * Does NOT fabricate a specific breed; instead surfaces a transparent
+   * service-unavailable message so the UI can prompt the user to try again.
+   */
   _breedFeatureFallback(input: BreedScanInput): BreedScanResult {
-    if (input.species === 'cat') {
-      return {
-        species: 'cat',
-        primaryBreed: 'Domestic Shorthair',
-        confidence: 88.5,
-        secondaryBreeds: [
-          { breed: 'British Shorthair', confidence: 7.2 },
-          { breed: 'American Shorthair', confidence: 4.3 },
-        ],
-        characteristics: {
-          energyLevel: 'Moderate',
-          groomingNeeds: 'Low (weekly brushing)',
-          temperament: ['Curious', 'Affectionate', 'Independent', 'Adaptable'],
-          typicalWeightRangeKg: { min: 3.5, max: 6.0 },
-          lifeExpectancyYears: { min: 14, max: 18 },
-        },
-        healthConsiderations: [
-          'Hypertrophic Cardiomyopathy (HCM) screening recommended for adult cats',
-          'Dental tartar accumulation (routine dental cleanings recommended)',
-          'Feline Lower Urinary Tract Disease (FLUTD) — maintain hydration',
-        ],
-        careTips: [
-          'Provide interactive scratchers and climbing trees to encourage vertical movement',
-          'Feed high-protein wet food to support kidney health and optimal hydration',
-          'Schedule annual wellness exams and core vaccinations (FVRCP, Rabies)',
-        ],
-        disclaimer: 'Breed prediction is estimated by visual model analysis. DNA genetic tests provide 100% definitive heritage. Always consult a licensed veterinarian for clinical health management.',
-        generatedBy: 'visual_feature_engine',
-      };
-    }
+    logger.warn('[AIService] Returning breed-scan service-unavailable fallback', {
+      species: input.species,
+      geminiConfigured: isConfiguredCredential(env.GEMINI_API_KEY),
+    });
 
     return {
-      species: 'dog',
-      primaryBreed: 'Golden Retriever',
-      confidence: 89.4,
-      secondaryBreeds: [
-        { breed: 'Labrador Retriever', confidence: 7.8 },
-        { breed: 'Flat-Coated Retriever', confidence: 2.8 },
-      ],
+      species: input.species,
+      primaryBreed: 'Unable to identify — AI service unavailable',
+      confidence: 0,
+      secondaryBreeds: [],
       characteristics: {
-        energyLevel: 'High',
-        groomingNeeds: 'Moderate (2-3 times weekly brushing, regular de-shedding)',
-        temperament: ['Friendly', 'Intelligent', 'Devoted', 'Playful'],
-        typicalWeightRangeKg: { min: 25.0, max: 34.0 },
-        lifeExpectancyYears: { min: 10, max: 12 },
+        energyLevel: 'Unknown',
+        groomingNeeds: 'Unknown',
+        temperament: [],
+        typicalWeightRangeKg: { min: 0, max: 0 },
+        lifeExpectancyYears: { min: 0, max: 0 },
       },
       healthConsiderations: [
-        'Hip and Elbow Dysplasia evaluation (OFA screening recommended)',
-        'Cardiovascular health (Subvalvular Aortic Stenosis)',
-        'Ear infection susceptibility due to floppy ear anatomy (keep dry after swimming)',
+        'Breed identification requires the Gemini AI engine to be configured.',
+        'Please ensure GEMINI_API_KEY is set to a valid Google Gemini API key in the server environment.',
       ],
       careTips: [
-        'Ensure at least 60-90 minutes of daily physical exercise and mental enrichment',
-        'Avoid intense joint impact before growth plates close around 14-18 months',
-        'Clean ears routinely after water activities using veterinary-approved drying solution',
+        'Once the AI engine is configured, upload a clear front-facing photo of your pet for best results.',
       ],
-      disclaimer: 'Breed prediction is estimated by visual model analysis. DNA genetic tests provide 100% definitive heritage. Always consult a licensed veterinarian for clinical health management.',
+      disclaimer:
+        'Breed identification is powered by Gemini vision AI. The service is currently unavailable because the AI engine is not configured. ' +
+        'No breed prediction can be made without a valid API key. DNA genetic tests provide 100% definitive heritage.',
       generatedBy: 'visual_feature_engine',
     };
   },
@@ -545,7 +537,12 @@ export const aiService = {
       };
     }
 
-    let response = `Hello! Regarding ${petName} (${petSpecies}): `;
+    // Inform the user the AI engine is not available
+    const aiUnavailableNote = isConfiguredCredential(env.GEMINI_API_KEY)
+      ? '' // Gemini IS configured — this fallback only runs if the API call itself failed
+      : ' (Note: The AI assistant is currently operating in basic mode because the AI engine is not yet configured by the administrator.)';
+
+    let response = `Hello! Regarding ${petName} (${petSpecies}):${aiUnavailableNote} `;
 
     if (lower.includes('food') || lower.includes('eat') || lower.includes('diet') || lower.includes('feed')) {
       response += `Consistent nutrition is essential. Ensure ${petName} is fed age-appropriate, balanced food in measured portions. Always avoid toxic items like onions, garlic, chocolate, grapes/raisins, and xylitol. If ${petName} refuses to eat for more than 24 hours (or 12 hours for young puppies/kittens), schedule a veterinary checkup.`;

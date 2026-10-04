@@ -20,14 +20,30 @@ import { Skeleton } from '@/shared/components/feedback/Skeleton';
 import { InteractiveMap } from '../components/InteractiveMap';
 import { toast } from 'sonner';
 
+const HYDERABAD_COORDS = { lat: 17.4156, lng: 78.4350 };
+
+const HYDERABAD_LOCALITIES = [
+  { id: 'all', label: 'All Hyderabad', query: '' },
+  { id: 'banjara', label: 'Banjara Hills', query: 'Banjara Hills' },
+  { id: 'jubilee', label: 'Jubilee Hills', query: 'Jubilee Hills' },
+  { id: 'gachibowli', label: 'Gachibowli', query: 'Gachibowli' },
+  { id: 'madhapur', label: 'Madhapur', query: 'Madhapur' },
+  { id: 'kondapur', label: 'Kondapur', query: 'Kondapur' },
+  { id: 'kukatpally', label: 'Kukatpally', query: 'Kukatpally' },
+  { id: 'secunderabad', label: 'Secunderabad', query: 'Secunderabad' },
+  { id: 'abids', label: 'Abids / Central', query: 'Abids' },
+];
+
 export default function NearbyPage() {
   const navigate = useNavigate();
 
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(HYDERABAD_COORDS);
+  const [isLiveGps, setIsLiveGps] = useState<boolean>(false);
   const [geoNotice, setGeoNotice] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string>('');
+  const [selectedLocality, setSelectedLocality] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [radiusKm, setRadiusKm] = useState<number>(25);
+  const [radiusKm, setRadiusKm] = useState<number>(35);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   const requestLocation = () => {
@@ -35,24 +51,32 @@ export default function NearbyPage() {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setIsLiveGps(true);
           setGeoNotice(null);
-          toast.success('Live location updated');
+          toast.success('Live GPS location updated');
         },
         () => {
-          setGeoNotice('Location permission not granted. Showing all registered clinics.');
-          setCoords(null);
+          setGeoNotice('Using Hyderabad city coordinates (GPS permission not granted).');
+          setCoords(HYDERABAD_COORDS);
+          setIsLiveGps(false);
         },
         { timeout: 7000, enableHighAccuracy: true }
       );
     } else {
-      setGeoNotice('Browser geolocation is not available. Showing all registered clinics.');
-      setCoords(null);
+      setGeoNotice('Using Hyderabad city coordinates.');
+      setCoords(HYDERABAD_COORDS);
+      setIsLiveGps(false);
     }
   };
 
   useEffect(() => {
     requestLocation();
   }, []);
+
+  const handleLocalitySelect = (locId: string, query: string) => {
+    setSelectedLocality(locId);
+    setSearchQuery(query);
+  };
 
   const { data: clinics, isLoading } = useNearbyServices({
     lat: coords?.lat,
@@ -75,9 +99,15 @@ export default function NearbyPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="badge bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[11px] font-semibold flex items-center gap-1.5 py-0.5 px-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              {isLiveGps ? 'Live GPS Location' : 'Hyderabad, Telangana'}
+            </span>
+          </div>
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Nearby Pet Care & Clinics</h1>
           <p className="text-sm text-muted mt-1">
-            Discover verified veterinary practices, emergency pet hospitals, and grooming professionals.
+            Discover verified veterinary practices, 24/7 animal hospitals, and grooming spas in Hyderabad.
           </p>
         </div>
 
@@ -125,15 +155,53 @@ export default function NearbyPage() {
         </div>
       )}
 
+      {/* Hyderabad Locality Quick-Filter Bar */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted flex items-center gap-1">
+            <MapPin className="w-3 h-3 text-primary" /> Hyderabad Neighborhoods
+          </span>
+          {selectedLocality !== 'all' && (
+            <button
+              onClick={() => handleLocalitySelect('all', '')}
+              className="text-[11px] text-primary hover:underline font-semibold"
+            >
+              Reset to All Hyderabad
+            </button>
+          )}
+        </div>
+        <div className="flex overflow-x-auto no-scrollbar gap-1.5 pb-1">
+          {HYDERABAD_LOCALITIES.map((loc) => {
+            const isSelected = selectedLocality === loc.id;
+            return (
+              <button
+                key={loc.id}
+                onClick={() => handleLocalitySelect(loc.id, loc.query)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border ${
+                  isSelected
+                    ? 'bg-primary text-white border-primary shadow-sm'
+                    : 'bg-surface-2 text-foreground/80 border-border hover:border-primary/40'
+                }`}
+              >
+                {loc.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Filter & Search Bar */}
       <div className="card p-4 mb-6 bg-surface border-border flex flex-col md:flex-row gap-3 items-center rounded-2xl">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3.5 top-3 h-4 w-4 text-muted" />
           <input
             type="text"
-            placeholder="Search by clinic name, address, or service..."
+            placeholder="Search by clinic name, address, or service (e.g. Banjara Hills, ICU, Surgery)..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setSelectedLocality('all');
+            }}
             className="input pl-10 w-full text-xs"
           />
         </div>

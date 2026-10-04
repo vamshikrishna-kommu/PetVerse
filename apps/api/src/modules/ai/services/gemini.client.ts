@@ -12,12 +12,33 @@ import type {
   DietRecommendationResult,
 } from './ai.service';
 
-const GEMINI_API_ENDPOINT =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_BASE_ENDPOINT =
+  'https://generativelanguage.googleapis.com/v1beta/models';
+
+// Model fallback chain — ordered by capability (highest first).
+// If a model is overloaded (503) or rate-limited (429), the next model is tried automatically.
+const GEMINI_MODEL_CHAIN = [
+  env.GEMINI_MODEL || 'gemini-3.7-flash', // Primary (from env)
+  'gemini-3.6-flash',                     // First fallback
+  'gemini-flash-lite-latest',             // Lightweight fallback
+];
 
 export const geminiClient = {
   isConfigured(): boolean {
     return isConfiguredCredential(env.GEMINI_API_KEY);
+  },
+
+  getModel(): string {
+    return GEMINI_MODEL_CHAIN[0];
+  },
+
+  getEndpointForModel(model: string): string {
+    return `${GEMINI_BASE_ENDPOINT}/${model}:generateContent`;
+  },
+
+  /** @deprecated use getEndpointForModel */
+  getEndpoint(): string {
+    return this.getEndpointForModel(this.getModel());
   },
 
   /**
@@ -25,7 +46,11 @@ export const geminiClient = {
    * Prompts the model with strict veterinary triage guidelines and structured JSON schema.
    */
   async analyzeSymptoms(input: SymptomAnalysisInput): Promise<Partial<SymptomAnalysisResult> | null> {
-    if (!this.isConfigured()) return null;
+    if (!this.isConfigured()) {
+      logger.warn('[GeminiClient] analyzeSymptoms skipped — GEMINI_API_KEY not configured');
+      return null;
+    }
+    logger.info('[GeminiClient] analyzeSymptoms called', { model: this.getModel() });
 
     const systemInstruction = `You are PetVerse AI, an expert veterinary clinical triage model.
 You evaluate pet symptoms strictly for triage urgency and safety.
@@ -71,7 +96,15 @@ Additional Clinical Notes: ${input.additionalNotes ?? 'None'}`;
    * Breed identification from visual features or base64 photo via Gemini multimodal vision.
    */
   async identifyBreed(input: BreedScanInput): Promise<Partial<BreedScanResult> | null> {
-    if (!this.isConfigured()) return null;
+    if (!this.isConfigured()) {
+      logger.warn('[GeminiClient] identifyBreed skipped — GEMINI_API_KEY not configured');
+      return null;
+    }
+    logger.info('[GeminiClient] identifyBreed called', {
+      model: this.getModel(),
+      hasImageBase64: Boolean(input.imageBase64),
+      hasImageUrl: Boolean(input.imageUrl),
+    });
 
     const systemInstruction = `You are PetVerse AI, a specialized veterinary breed recognition and genetics model.
 Analyze the pet's characteristics. Return ONLY a valid JSON object matching this schema:
@@ -112,6 +145,9 @@ Analyze the pet's characteristics. Return ONLY a valid JSON object matching this
 
       const response = await this._callGemini([{ role: 'user', parts }]);
       if (!response) return null;
+      logger.info('[GeminiClient] Raw breed scan response (first 200 chars)', {
+        preview: response.slice(0, 200),
+      });
       const cleanJson = this._extractJson(response);
       return JSON.parse(cleanJson) as Partial<BreedScanResult>;
     } catch (err: unknown) {
@@ -125,7 +161,14 @@ Analyze the pet's characteristics. Return ONLY a valid JSON object matching this
    * Conversational veterinary guidance for Pet Assistant chat.
    */
   async chatWithAssistant(input: ChatAssistantInput): Promise<string | null> {
-    if (!this.isConfigured()) return null;
+    if (!this.isConfigured()) {
+      logger.warn('[GeminiClient] chatWithAssistant skipped — GEMINI_API_KEY not configured');
+      return null;
+    }
+    logger.info('[GeminiClient] chatWithAssistant called', {
+      model: this.getModel(),
+      messageCount: input.messages.length,
+    });
 
     const petInfo = input.petContext
       ? `Pet Context: Name: ${input.petContext.name ?? 'Pet'}, Species: ${input.petContext.species ?? 'Unknown'}, Breed: ${input.petContext.breed ?? 'Unknown'}, Age: ${input.petContext.ageMonths ? `${input.petContext.ageMonths} months` : 'Unknown'}, Weight: ${input.petContext.weightKg ? `${input.petContext.weightKg} kg` : 'Unknown'}, Medical Conditions: ${input.petContext.medicalConditions?.join(', ') ?? 'None'}`
@@ -160,17 +203,21 @@ CRITICAL VETERINARY BOUNDARIES:
 
   // ─── Private HTTP Helper ─────────────────────────────────
 
-  async _callGemini(contents: any[]): Promise<string | null> {
+  async _callGemini(contents: any[], modelIndex = 0): Promise<string | null> {
+    if (modelIndex >= GEMINI_MODEL_CHAIN.length) {
+      logger.warn('[GeminiClient] All models in chain exhausted — no response available');
+      return null;
+    }
+
+    const model = GEMINI_MODEL_CHAIN[modelIndex];
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 9000);
+    const timeout = setTimeout(() => controller.abort(), 20000);
 
     try {
-      const url = `${GEMINI_API_ENDPOINT}?key=${env.GEMINI_API_KEY}`;
+      const url = `${this.getEndpointForModel(model)}?key=${env.GEMINI_API_KEY}`;
       const res = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents,
           generationConfig: {
@@ -185,26 +232,69 @@ CRITICAL VETERINARY BOUNDARIES:
 
       clearTimeout(timeout);
 
+      // Model overloaded or rate-limited — try next model in chain
+      if (res.status === 503 || res.status === 429) {
+        const nextModel = GEMINI_MODEL_CHAIN[modelIndex + 1];
+        logger.warn('[GeminiClient] Model overloaded, trying next in chain', {
+          failedModel: model,
+          nextModel: nextModel ?? 'none (chain exhausted)',
+          status: res.status,
+        });
+        await new Promise((r) => setTimeout(r, 800));
+        return this._callGemini(contents, modelIndex + 1);
+      }
+
       if (!res.ok) {
         const errorText = await res.text();
-        logger.warn('[GeminiClient] Gemini API HTTP error', { status: res.status, errorText });
+        logger.warn('[GeminiClient] Gemini API HTTP error', {
+          status: res.status,
+          model,
+          errorText: errorText.slice(0, 300),
+        });
         return null;
       }
 
       const data = (await res.json()) as any;
       const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (modelIndex > 0) {
+        logger.info('[GeminiClient] Succeeded with fallback model', { model, modelIndex });
+      }
       return candidateText ? (candidateText as string) : null;
     } catch (err: unknown) {
       clearTimeout(timeout);
+      // If request timed out and more models are available, try the next one
+      const isTimeout = err instanceof Error && err.name === 'AbortError';
+      if (isTimeout && modelIndex + 1 < GEMINI_MODEL_CHAIN.length) {
+        const nextModel = GEMINI_MODEL_CHAIN[modelIndex + 1];
+        logger.warn('[GeminiClient] Model timed out, trying next in chain', {
+          timedOutModel: model,
+          nextModel,
+        });
+        return this._callGemini(contents, modelIndex + 1);
+      }
       throw err;
     }
   },
 
+  /**
+   * Extracts a JSON object from model output using three strategies:
+   * 1. Markdown code block: ```json ... ```
+   * 2. First { to last } brace extraction (handles prose-wrapped JSON)
+   * 3. Raw trimmed text (last resort)
+   */
   _extractJson(text: string): string {
-    const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-    if (jsonMatch && jsonMatch[1]) {
-      return jsonMatch[1].trim();
+    // Strategy 1: markdown code block
+    const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (codeBlock?.[1]) return codeBlock[1].trim();
+
+    // Strategy 2: find outermost { ... } object
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      return text.slice(firstBrace, lastBrace + 1).trim();
     }
+
+    // Strategy 3: raw trimmed text
     return text.trim();
   },
 };

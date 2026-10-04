@@ -13,7 +13,8 @@
     "test": "jest --passWithNoTests --runInBand",
     "test:coverage": "jest --passWithNoTests --coverage --runInBand",
     "test:watch": "jest --watch",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "seed": "tsx src/scripts/seed.ts"
   },
   "dependencies": {
     "@petverse/shared-constants": "workspace:*",

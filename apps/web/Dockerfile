@@ -22,6 +22,16 @@ COPY apps/web/ ./apps/web/
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
+# Build args for Vite compile-time environment variables
+ARG VITE_API_BASE_URL
+ARG VITE_GOOGLE_MAPS_API_KEY
+ARG VITE_RAZORPAY_KEY_ID
+ARG VITE_GOOGLE_CLIENT_ID
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_GOOGLE_MAPS_API_KEY=$VITE_GOOGLE_MAPS_API_KEY
+ENV VITE_RAZORPAY_KEY_ID=$VITE_RAZORPAY_KEY_ID
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+
 # Build Web bundle
 RUN pnpm --filter @petverse/web run build
 

@@ -21,9 +21,9 @@ export function InteractiveMap({
     clinics.find((c) => c._id === selectedClinicId) || clinics[0] || null
   );
 
-  // Center on active clinic, user coords, or first clinic
-  const centerLat = activeClinic?.location?.coordinates?.[1] || userCoords?.lat || 37.7749;
-  const centerLng = activeClinic?.location?.coordinates?.[0] || userCoords?.lng || -122.4194;
+  // Center on active clinic, user coords, or default to Hyderabad, Telangana
+  const centerLat = activeClinic?.location?.coordinates?.[1] || userCoords?.lat || 17.4156;
+  const centerLng = activeClinic?.location?.coordinates?.[0] || userCoords?.lng || 78.4350;
 
   const googleMapsKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 

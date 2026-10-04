@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { aiApi, type BreedScanResponse } from '@/services/api/aiApi';
 import {
@@ -14,16 +14,60 @@ import {
   Scale,
   Calendar,
   Info,
+  Dna,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+const SCAN_STAGES = [
+  { label: 'Preparing image payload',   from: 0,  to: 12,  duration: 600  },
+  { label: 'Uploading to vision model', from: 12, to: 28,  duration: 1200 },
+  { label: 'Running visual AI scan',    from: 28, to: 55,  duration: 3500 },
+  { label: 'Decoding genetic markers',  from: 55, to: 75,  duration: 3000 },
+  { label: 'Matching breed database',   from: 75, to: 88,  duration: 2500 },
+  { label: 'Finalizing report',         from: 88, to: 88,  duration: 99999 }, // holds until API responds
+];
+
 export default function BreedScanPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [species, setSpecies] = useState<'dog' | 'cat'>('dog');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<BreedScanResponse | null>(null);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanStageLabel, setScanStageLabel] = useState('');
+  const progressTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Animate progress through stages while scan is running
+  useEffect(() => {
+    if (!isLoading) return;
+    setScanProgress(0);
+    setScanStageLabel(SCAN_STAGES[0].label);
+    let elapsed = 0;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    SCAN_STAGES.forEach((stage) => {
+      const t = setTimeout(() => {
+        setScanStageLabel(stage.label);
+        // Smoothly interpolate from stage.from to stage.to
+        const steps = 30;
+        const stepSize = (stage.to - stage.from) / steps;
+        const stepMs = stage.duration / steps;
+        for (let i = 0; i <= steps; i++) {
+          const st = setTimeout(() => {
+            setScanProgress(Math.min(stage.from + stepSize * i, stage.to));
+          }, stepMs * i);
+          timers.push(st);
+        }
+      }, elapsed);
+      timers.push(t);
+      elapsed += stage.duration;
+    });
+
+    progressTimers.current = timers;
+    return () => timers.forEach(clearTimeout);
+  }, [isLoading]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -39,6 +83,7 @@ export default function BreedScanPage() {
       const dataUrl = event.target?.result as string;
       setImagePreview(dataUrl);
       setImageBase64(dataUrl);
+      setResult(null); // clear old result when new image selected
     };
     reader.readAsDataURL(file);
   };
@@ -50,16 +95,23 @@ export default function BreedScanPage() {
     }
 
     setIsLoading(true);
+    setResult(null);
     try {
       const data = await aiApi.identifyBreed({
         species,
         imageBase64,
       });
+      // Snap to 100% then show result
+      progressTimers.current.forEach(clearTimeout);
+      setScanProgress(100);
+      setScanStageLabel('Analysis complete!');
+      await new Promise((r) => setTimeout(r, 400));
       setResult(data);
     } catch {
       toast.error('Failed to analyze image. Please try again.');
     } finally {
       setIsLoading(false);
+      setScanProgress(0);
     }
   };
 
@@ -126,10 +178,18 @@ export default function BreedScanPage() {
               onChange={handleFileChange}
               className="hidden"
             />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileChange}
+              className="hidden"
+            />
 
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-border hover:border-primary/50 transition-colors rounded-2xl p-6 text-center cursor-pointer bg-surface-2/40 group flex flex-col items-center justify-center min-h-[200px]"
+              className="border-2 border-dashed border-border hover:border-primary/50 transition-colors rounded-2xl p-6 text-center cursor-pointer bg-surface-2/40 group flex flex-col items-center justify-center min-h-[190px]"
             >
               {imagePreview ? (
                 <div className="relative w-full max-h-56 overflow-hidden rounded-xl">
@@ -153,15 +213,35 @@ export default function BreedScanPage() {
               )}
             </div>
 
+            {/* Mobile-friendly Action Buttons */}
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="py-2.5 px-3 bg-surface-2 hover:bg-surface-3 border border-border rounded-xl text-xs font-semibold text-foreground flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+              >
+                <Camera className="h-4 w-4 text-purple-500" />
+                Take Photo
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="py-2.5 px-3 bg-surface-2 hover:bg-surface-3 border border-border rounded-xl text-xs font-semibold text-foreground flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+              >
+                <UploadCloud className="h-4 w-4 text-primary" />
+                Choose Gallery
+              </button>
+            </div>
+
             <button
               onClick={handleScan}
               disabled={isLoading || !imageBase64}
-              className="btn-primary w-full mt-6 py-3 font-semibold text-xs rounded-xl flex items-center justify-center gap-2 shadow-md"
+              className="btn-primary w-full mt-6 py-3 font-semibold text-xs rounded-xl flex items-center justify-center gap-2 shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>
-                  <Sparkles className="h-4 w-4 animate-spin" />
-                  Analyzing Breed Patterns...
+                  <Sparkles className="h-4 w-4 animate-pulse" />
+                  Scanning...
                 </>
               ) : (
                 <>
@@ -170,6 +250,52 @@ export default function BreedScanPage() {
                 </>
               )}
             </button>
+
+            {/* ── Progress Bar — visible while scanning ── */}
+            {isLoading && (
+              <div className="mt-5 space-y-2.5 animate-fade-in">
+                {/* Stage label + percentage */}
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-primary flex items-center gap-1.5">
+                    <Dna className="h-3 w-3 animate-pulse" />
+                    {scanStageLabel}
+                  </span>
+                  <span className="text-[11px] font-black text-foreground tabular-nums">
+                    {Math.round(scanProgress)}%
+                  </span>
+                </div>
+
+                {/* Track */}
+                <div className="relative h-2.5 w-full rounded-full bg-surface-3 overflow-hidden border border-border/60">
+                  <div
+                    className="h-full rounded-full transition-all duration-300 ease-out"
+                    style={{
+                      width: `${scanProgress}%`,
+                      background: 'linear-gradient(90deg, #a855f7, #6366f1, #3b82f6)',
+                      boxShadow: '0 0 8px rgba(99,102,241,0.45)',
+                    }}
+                  />
+                </div>
+
+                {/* Milestone dots */}
+                <div className="flex justify-between px-0.5">
+                  {[12, 28, 55, 75, 88, 100].map((m) => (
+                    <div
+                      key={m}
+                      className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${
+                        scanProgress >= m
+                          ? 'bg-indigo-500 scale-125'
+                          : 'bg-border'
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                <p className="text-[10px] text-muted text-center leading-relaxed">
+                  Gemini Vision AI is analyzing your pet’s visual features — this may take 10–20s
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

@@ -77,8 +77,8 @@ services:
       - FRONTEND_URL=http://localhost
       - MONGODB_URI=mongodb://mongodb:27017/petverse?replicaSet=rs0
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=change_me_to_a_secure_production_key_32chars_min
-      - JWT_REFRESH_SECRET=change_me_to_a_different_secure_refresh_key_32chars
+      - JWT_SECRET=${JWT_SECRET:-9f8e7d6c5b4a3928170f1e2d3c4b5a69788796a5b4c3d2e1f0a9b8c7d6e5f4a3}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b}
       - BCRYPT_ROUNDS=12
       - RATE_LIMIT_GLOBAL_MAX=300
       - RATE_LIMIT_AUTH_MAX=20

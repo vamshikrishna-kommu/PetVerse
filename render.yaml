@@ -75,3 +75,23 @@ services:
         sync: false
       - key: TWILIO_PHONE_NUMBER
         sync: false
+
+  - type: web
+    name: petverse-web
+    runtime: static
+    buildCommand: corepack enable && corepack prepare pnpm@9.14.4 --activate && pnpm install --frozen-lockfile && pnpm --filter @petverse/web run build
+    staticPublishPath: ./apps/web/dist
+    autoDeploy: true
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false
+      - key: VITE_GOOGLE_MAPS_API_KEY
+        sync: false
+      - key: VITE_RAZORPAY_KEY_ID
+        sync: false
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false

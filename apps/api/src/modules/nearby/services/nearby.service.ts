@@ -8,16 +8,190 @@ import { env } from '../../../config/env';
 
 export const nearbyService = {
   /** Seed initial verified clinics if database has 0 clinics (development/test only — NEVER in production) */
+  /** Seed initial verified clinics if database has 0 clinics or missing Hyderabad clinics (development/test only — NEVER in production) */
   async seedClinicsIfEmpty(): Promise<void> {
     if (env.NODE_ENV === 'production' || process.env.NODE_ENV === 'production') {
       return;
     }
-    const count = await ClinicModel.countDocuments();
-    if (count > 0) return;
 
     const dummyOwnerId = new mongoose.Types.ObjectId();
 
-    await ClinicModel.create([
+    const verifiedClinics = [
+      // ─── Hyderabad (Premier Localities & Emergency Hubs) ───────────
+      {
+        name: 'Olive Pet Hospital & 24/7 Emergency Care',
+        ownerId: dummyOwnerId,
+        type: 'emergency_hospital',
+        address: 'Road No. 10, Singada Kunta, Banjara Hills, Hyderabad, TS 500034',
+        location: { type: 'Point', coordinates: [78.4350, 17.4150] },
+        phone: '+91 40 2335 1199',
+        email: 'emergency@olivepethospital.com',
+        website: 'https://olivepethospital.com',
+        services: ['24/7 ICU & Critical Care', 'Digital X-Ray', 'Blood Transfusion', 'Orthopedic Surgery', 'Emergency Oxygen'],
+        ratings: { avg: 4.9, count: 480 },
+        isVerified: true,
+        emergencyAvailable: true,
+      },
+      {
+        name: 'Super Vets 24/7 Multi-Specialty Pet Hospital',
+        ownerId: dummyOwnerId,
+        type: 'emergency_hospital',
+        address: 'Plot 18, Near Bio-Diversity Junction, Gachibowli, Hyderabad, TS 500032',
+        location: { type: 'Point', coordinates: [78.3650, 17.4400] },
+        phone: '+91 40 4855 7799',
+        email: 'care@supervets.in',
+        website: 'https://supervets.in',
+        services: ['24/7 Trauma Care', 'Laparoscopic Surgery', 'Color Doppler Ultrasound', 'Critical Care ICU', 'In-house Pharmacy'],
+        ratings: { avg: 4.8, count: 395 },
+        isVerified: true,
+        emergencyAvailable: true,
+      },
+      {
+        name: 'Pet Care Multi-Speciality Veterinary Hospital',
+        ownerId: dummyOwnerId,
+        type: 'veterinary_clinic',
+        address: 'Plot 722, Road No. 36, Jubilee Hills, Hyderabad, TS 500033',
+        location: { type: 'Point', coordinates: [78.4060, 17.4320] },
+        phone: '+91 40 2355 8822',
+        email: 'info@petcarejubileehills.com',
+        website: 'https://petcarejubileehills.com',
+        services: ['Internal Medicine', 'Cardiology', 'Soft Tissue & Bone Surgery', 'Veterinary Dentistry', 'Diagnostic Pathology'],
+        ratings: { avg: 4.8, count: 310 },
+        isVerified: true,
+        emergencyAvailable: true,
+      },
+      {
+        name: 'Dr. Dog Veterinary Clinic & Surgical Centre',
+        ownerId: dummyOwnerId,
+        type: 'veterinary_clinic',
+        address: 'Plot 12, Kavuri Hills, Madhapur, Hitec City, Hyderabad, TS 500081',
+        location: { type: 'Point', coordinates: [78.3910, 17.4480] },
+        phone: '+91 40 4012 3344',
+        email: 'contact@drdogclinic.com',
+        services: ['Routine Consultations', 'Preventive Vaccinations', 'Microchipping', 'Dental Scaling', 'Pet Wellness Packages'],
+        ratings: { avg: 4.7, count: 245 },
+        isVerified: true,
+        emergencyAvailable: false,
+      },
+      {
+        name: 'Blue Cross of Hyderabad (Rescue, Clinic & Shelter)',
+        ownerId: dummyOwnerId,
+        type: 'veterinary_clinic',
+        address: '403/9, Road No. 35, Jubilee Hills, Hyderabad, TS 500033',
+        location: { type: 'Point', coordinates: [78.4230, 17.4260] },
+        phone: '+91 40 2354 4355',
+        email: 'info@bluecrosshyd.org',
+        website: 'https://bluecrosshyd.org',
+        services: ['24/7 Rescue & Treatment', 'Anti-Rabies Vaccination', 'Spay & Neuter', 'Emergency Trauma Care', 'Adoption Services'],
+        ratings: { avg: 4.9, count: 620 },
+        isVerified: true,
+        emergencyAvailable: true,
+      },
+      {
+        name: 'The Ark Veterinary Clinic & Diagnostics',
+        ownerId: dummyOwnerId,
+        type: 'veterinary_clinic',
+        address: 'Telecom Nagar, Gachibowli, Hyderabad, TS 500032',
+        location: { type: 'Point', coordinates: [78.3580, 17.4360] },
+        phone: '+91 40 6789 1234',
+        email: 'support@arkvetclinic.in',
+        services: ['General Health Checkups', 'Deworming & Immunization', 'Dermatology & Allergy Care', 'Ophthalmology', 'Dietary Consultation'],
+        ratings: { avg: 4.7, count: 188 },
+        isVerified: true,
+        emergencyAvailable: false,
+      },
+      {
+        name: 'Furry Paws Luxury Pet Grooming & Spa',
+        ownerId: dummyOwnerId,
+        type: 'groomer',
+        address: 'Road No. 45, Nandagiri Hills, Jubilee Hills, Hyderabad, TS 500033',
+        location: { type: 'Point', coordinates: [78.4110, 17.4380] },
+        phone: '+91 91000 88221',
+        email: 'appointments@furrypawshyd.com',
+        services: ['Medicated Herbal Bath', 'Breed-Specific Coat Styling', 'Aromatherapy Pet Spa', 'De-Shedding & Mat Removal', 'Ear & Paw Care'],
+        ratings: { avg: 4.9, count: 275 },
+        isVerified: true,
+        emergencyAvailable: false,
+      },
+      {
+        name: 'Pet Universe Veterinary Care & Luxury Boarding',
+        ownerId: dummyOwnerId,
+        type: 'boarding',
+        address: 'Kothaguda X Roads, Kondapur, Hyderabad, TS 500084',
+        location: { type: 'Point', coordinates: [78.3680, 17.4640] },
+        phone: '+91 40 2988 5566',
+        email: 'stay@petuniversehyd.com',
+        services: ['Climate-Controlled Boarding Suites', '24/7 Vet on Call', 'Outdoor Agility Play Yards', 'Daily Video Updates', 'Custom Meal Plans'],
+        ratings: { avg: 4.8, count: 215 },
+        isVerified: true,
+        emergencyAvailable: false,
+      },
+      {
+        name: 'Vet N Pet Polyclinic & Surgical Facility',
+        ownerId: dummyOwnerId,
+        type: 'veterinary_clinic',
+        address: 'Road No. 1, KPHB Colony Phase 1, Kukatpally, Hyderabad, TS 500072',
+        location: { type: 'Point', coordinates: [78.3990, 17.4930] },
+        phone: '+91 40 2315 6789',
+        email: 'kukatpally@vetnpet.in',
+        services: ['Emergency Care', 'Fracture Repair', 'Vaccination & Deworming', 'Digital Ultrasound', 'Post-Op Critical Care'],
+        ratings: { avg: 4.6, count: 190 },
+        isVerified: true,
+        emergencyAvailable: true,
+      },
+      {
+        name: 'Secunderabad Veterinary Polyclinic & Hospital',
+        ownerId: dummyOwnerId,
+        type: 'veterinary_clinic',
+        address: 'M.G. Road, Near Clock Tower, Secunderabad, TS 500003',
+        location: { type: 'Point', coordinates: [78.4980, 17.4390] },
+        phone: '+91 40 2780 4422',
+        email: 'care@secunderabadvet.org',
+        services: ['General Practice', 'Orthopedic Surgery', 'Canine Blood Banking', 'Clinical Lab Diagnostics', '24/7 Emergency'],
+        ratings: { avg: 4.7, count: 340 },
+        isVerified: true,
+        emergencyAvailable: true,
+      },
+      {
+        name: 'Canine & Feline Pet Hospital',
+        ownerId: dummyOwnerId,
+        type: 'veterinary_clinic',
+        address: 'Plot 48, Defence Colony, Sainikpuri, Secunderabad, TS 500094',
+        location: { type: 'Point', coordinates: [78.5450, 17.4870] },
+        phone: '+91 40 2711 9900',
+        email: 'help@caninefelinevet.com',
+        services: ['Puppy & Kitten Wellness', 'Geriatric Pet Health', 'Full Hematology Lab', 'Dental Scaling', 'Pet Pharmacy'],
+        ratings: { avg: 4.8, count: 165 },
+        isVerified: true,
+        emergencyAvailable: false,
+      },
+      {
+        name: 'Government Veterinary Super Specialty Hospital',
+        ownerId: dummyOwnerId,
+        type: 'veterinary_clinic',
+        address: 'Narayanguda Main Road, Himayatnagar, Hyderabad, TS 500029',
+        location: { type: 'Point', coordinates: [78.4910, 17.3980] },
+        phone: '+91 40 2475 2200',
+        email: 'info@telanganavethospital.gov.in',
+        services: ['State-of-the-Art Surgery', 'Advanced Radiology & CT', 'State Diagnostic Lab', 'Subsidized Medicine', '24/7 Casualty'],
+        ratings: { avg: 4.6, count: 520 },
+        isVerified: true,
+        emergencyAvailable: true,
+      },
+      {
+        name: 'Hyderabad Animal Hospital & Research Centre',
+        ownerId: dummyOwnerId,
+        type: 'veterinary_clinic',
+        address: '5-4-59, Abids, Hyderabad, TS 500001',
+        location: { type: 'Point', coordinates: [78.4672, 17.3800] },
+        phone: '+91 40 2461 5500',
+        email: 'contact@hahrc.in',
+        services: ['General Practice', 'Oncology', 'Orthopedics', 'Lab Diagnostics', 'Endoscopy'],
+        ratings: { avg: 4.7, count: 210 },
+        isVerified: true,
+        emergencyAvailable: true,
+      },
+      // ─── Other Key Indian Metros ─────────────────────────────────
       {
         name: 'Cessna Lifeline Veterinary Hospital',
         ownerId: dummyOwnerId,
@@ -70,20 +244,21 @@ export const nearbyService = {
         isVerified: true,
         emergencyAvailable: false,
       },
-      {
-        name: 'Hyderabad Animal Hospital & Research Centre',
-        ownerId: dummyOwnerId,
-        type: 'veterinary_clinic',
-        address: '5-4-59, Abids, Hyderabad, TS 500001',
-        location: { type: 'Point', coordinates: [78.4672, 17.3800] },
-        phone: '+91 40 2461 5500',
-        email: 'contact@hahrc.in',
-        services: ['General Practice', 'Oncology', 'Orthopedics', 'Lab Diagnostics', 'Endoscopy'],
-        ratings: { avg: 4.7, count: 196 },
-        isVerified: true,
-        emergencyAvailable: true,
-      },
-    ]);
+    ];
+
+    const currentCount = await ClinicModel.countDocuments();
+    if (currentCount === 0) {
+      await ClinicModel.create(verifiedClinics);
+    } else {
+      // Upsert any missing verified clinics (e.g. adding Hyderabad clinics to an existing DB)
+      for (const clinic of verifiedClinics) {
+        await ClinicModel.updateOne(
+          { name: clinic.name },
+          { $setOnInsert: clinic },
+          { upsert: true }
+        );
+      }
+    }
   },
 
   async getNearbyServices(query: {

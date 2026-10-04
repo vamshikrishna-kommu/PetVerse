@@ -69,6 +69,7 @@ const envSchema = z.object({
   AI_SERVICE_URL: z.string().url().default('http://localhost:8000'),
   AI_SERVICE_INTERNAL_KEY: optionalSecret,
   GEMINI_API_KEY: optionalGeneral,
+  GEMINI_MODEL: optionalGeneral,
 
   // Payment Provider — India-first: Razorpay (Stripe kept as international fallback)
   RAZORPAY_KEY_ID: optionalGeneral,

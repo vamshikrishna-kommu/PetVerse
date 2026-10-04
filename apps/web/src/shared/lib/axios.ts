@@ -18,6 +18,10 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // AI routes involve large image payloads + model chain fallbacks — give them more time
+    if (config.url?.startsWith('/ai/')) {
+      config.timeout = 60_000;
+    }
     return config;
   },
   (error) => Promise.reject(error)

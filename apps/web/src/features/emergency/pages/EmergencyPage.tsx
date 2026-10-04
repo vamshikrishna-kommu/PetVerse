@@ -30,12 +30,20 @@ export default function EmergencyPage() {
     let isMounted = true;
     setIsLoading(true);
 
-    const fetchClinics = (lat?: number, lng?: number) => {
+    const HYDERABAD_COORDS = { lat: 17.4156, lng: 78.4350 };
+
+    const fetchClinics = (lat: number = HYDERABAD_COORDS.lat, lng: number = HYDERABAD_COORDS.lng) => {
       nearbyApi
-        .getNearbyServices({ lat, lng, type: 'veterinary_clinic' })
+        .getNearbyServices({ lat, lng, radiusKm: 35 })
         .then((clinics) => {
           if (isMounted) {
-            setEmergencyClinics(clinics.slice(0, 3));
+            // Prioritize verified 24/7 emergency facilities
+            const emergencyFirst = [...clinics].sort((a, b) => {
+              if (a.emergencyAvailable && !b.emergencyAvailable) return -1;
+              if (!a.emergencyAvailable && b.emergencyAvailable) return 1;
+              return (a.distanceKm ?? 999) - (b.distanceKm ?? 999);
+            });
+            setEmergencyClinics(emergencyFirst.slice(0, 3));
             setIsError(false);
           }
         })
@@ -53,11 +61,11 @@ export default function EmergencyPage() {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => fetchClinics(pos.coords.latitude, pos.coords.longitude),
-        () => fetchClinics(),
+        () => fetchClinics(HYDERABAD_COORDS.lat, HYDERABAD_COORDS.lng),
         { timeout: 5000 }
       );
     } else {
-      fetchClinics();
+      fetchClinics(HYDERABAD_COORDS.lat, HYDERABAD_COORDS.lng);
     }
 
     return () => {
@@ -126,36 +134,52 @@ export default function EmergencyPage() {
         </div>
 
         {/* Rapid Hotline Dials & Emergency Actions */}
-        <div className="grid sm:grid-cols-3 gap-3 pt-2">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
           <a
-            href="tel:8884264435"
+            href="tel:1962"
             className="flex items-center justify-between p-4 rounded-xl bg-card border border-rose-500/20 hover:border-rose-500 transition group shadow-sm"
           >
             <div className="flex items-center gap-3">
               <PhoneCall className="w-5 h-5 text-rose-500 group-hover:scale-110 transition-transform" />
               <div>
-                <p className="text-xs font-bold text-foreground">ASPCA Poison Control</p>
-                <p className="text-sm font-extrabold text-rose-600">(888) 426-4435</p>
+                <p className="text-xs font-bold text-foreground">Telangana Animal Ambulance</p>
+                <p className="text-sm font-extrabold text-rose-600">1962 (Toll Free)</p>
               </div>
             </div>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 uppercase">
-              24/7 Live
+              24/7 Govt
             </span>
           </a>
 
           <a
-            href="tel:8557647661"
+            href="tel:+914023544355"
             className="flex items-center justify-between p-4 rounded-xl bg-card border border-rose-500/20 hover:border-rose-500 transition group shadow-sm"
           >
             <div className="flex items-center gap-3">
               <PhoneCall className="w-5 h-5 text-rose-500 group-hover:scale-110 transition-transform" />
               <div>
-                <p className="text-xs font-bold text-foreground">Pet Poison Helpline</p>
-                <p className="text-sm font-extrabold text-rose-600">(855) 764-7661</p>
+                <p className="text-xs font-bold text-foreground">Blue Cross of Hyderabad</p>
+                <p className="text-sm font-extrabold text-rose-600">(040) 2354-4355</p>
               </div>
             </div>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 uppercase">
-              24/7 Live
+              24/7 ER
+            </span>
+          </a>
+
+          <a
+            href="tel:+919394085852"
+            className="flex items-center justify-between p-4 rounded-xl bg-card border border-rose-500/20 hover:border-rose-500 transition group shadow-sm"
+          >
+            <div className="flex items-center gap-3">
+              <PhoneCall className="w-5 h-5 text-rose-500 group-hover:scale-110 transition-transform" />
+              <div>
+                <p className="text-xs font-bold text-foreground">Hyderabad Rescue Dispatch</p>
+                <p className="text-sm font-extrabold text-rose-600">+91 93940 85852</p>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 uppercase">
+              Rescue
             </span>
           </a>
 
@@ -166,7 +190,7 @@ export default function EmergencyPage() {
             <div className="flex items-center gap-3">
               <ShieldAlert className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
               <div className="text-left">
-                <p className="text-xs font-bold opacity-90">Pet Missing or Lost?</p>
+                <p className="text-xs font-bold opacity-90">Pet Missing / Lost?</p>
                 <p className="text-sm font-extrabold">Broadcast SOS Alert</p>
               </div>
             </div>
