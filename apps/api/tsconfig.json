@@ -5,6 +5,7 @@
     "moduleResolution": "node",
     "lib": ["ES2022"],
     "outDir": "./dist",
+    "rootDir": "./src",
     "baseUrl": ".",
     "strict": true,
     "esModuleInterop": true,
@@ -16,8 +17,8 @@
     "declarationMap": true,
     "sourceMap": true,
     "paths": {
-      "@petverse/shared-types": ["../../packages/shared-types/src/index.ts"],
-      "@petverse/shared-constants": ["../../packages/shared-constants/src/index.ts"]
+      "@petverse/shared-types": ["../../packages/shared-types/dist/index.d.ts"],
+      "@petverse/shared-constants": ["../../packages/shared-constants/dist/index.d.ts"]
     }
   },
   "include": ["src/**/*"],

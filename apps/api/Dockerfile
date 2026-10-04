@@ -23,8 +23,8 @@ COPY apps/api/ ./apps/api/
 RUN pnpm install --frozen-lockfile
 
 # Build shared packages and api
-RUN pnpm --filter @petverse/shared-constants build || true
-RUN pnpm --filter @petverse/shared-types build || true
+RUN pnpm --filter @petverse/shared-constants run build
+RUN pnpm --filter @petverse/shared-types run build
 RUN pnpm --filter @petverse/api run build
 
 # Stage 2: Production Runtime
@@ -47,6 +47,8 @@ COPY apps/api/package.json ./apps/api/
 RUN pnpm install --prod --frozen-lockfile
 
 # Copy built artifacts from builder
+COPY --from=builder /app/packages/shared-constants/dist ./packages/shared-constants/dist
+COPY --from=builder /app/packages/shared-types/dist ./packages/shared-types/dist
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 
 # Security: Non-root user
