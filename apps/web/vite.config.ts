@@ -3,6 +3,21 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
+import os from 'os';
+
+function getBackendTarget() {
+  if (process.env.VITE_BACKEND_URL) return process.env.VITE_BACKEND_URL;
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return `http://${iface.address}:3000`;
+      }
+    }
+  }
+  return 'http://127.0.0.1:3000';
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -24,7 +39,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: getBackendTarget(),
         changeOrigin: true,
       },
     },
