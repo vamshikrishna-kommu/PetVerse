@@ -23,7 +23,7 @@ export const logger = createLogger({
   format: env.NODE_ENV === 'production' ? prodFormat : devFormat,
   transports: [
     new transports.Console(),
-    ...(env.NODE_ENV === 'production'
+    ...(process.env.LOG_TO_FILE === 'true'
       ? [
           new transports.File({ filename: 'logs/error.log', level: 'error' }),
           new transports.File({ filename: 'logs/combined.log' }),

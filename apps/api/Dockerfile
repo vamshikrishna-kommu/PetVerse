@@ -51,7 +51,9 @@ COPY --from=builder /app/packages/shared-constants/dist ./packages/shared-consta
 COPY --from=builder /app/packages/shared-types/dist ./packages/shared-types/dist
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 
-# Security: Non-root user
+# Security: Ensure directory permissions for node user
+RUN mkdir -p /app/logs && chown -R node:node /app
+
 USER node
 
 ENV NODE_ENV=production
