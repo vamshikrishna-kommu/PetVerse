@@ -491,6 +491,87 @@
 
 /* ─── Print styles ───────────────────────────────────────── */
 @media print {
-  .no-print { display: none !important; }
-  body { background: white; color: black; }
+  @page {
+    size: auto;
+    margin: 8mm;
+  }
+
+  /* Reset global viewport & body for print */
+  html, body {
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 11pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide app chrome, navigation, toolbars, buttons, banners, spacers, notifications */
+  header,
+  nav,
+  aside,
+  footer,
+  .no-print,
+  button,
+  [data-no-print="true"],
+  [role="navigation"],
+  [data-sonner-toaster],
+  .fixed,
+  .sticky,
+  div[aria-hidden="true"],
+  .pointer-events-none {
+    display: none !important;
+  }
+
+  /* Reset layout constraints created by fixed/overflow AppLayout */
+  div[class*="overflow-hidden"],
+  main[class*="overflow-y-auto"],
+  div[class*="h-[100dvh]"],
+  div[class*="min-h-[100dvh]"],
+  div[style*="margin-left"] {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Remove padding spacers on page wrappers */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  div[class*="pb-28"],
+  div[class*="pb-32"],
+  div[class*="pb-[calc"] {
+    padding-bottom: 0 !important;
+  }
+
+  /* Prevent page breaks inside printable cards */
+  .print-avoid-break,
+  .card,
+  [data-print-card] {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Force background graphics to print in high fidelity */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }
+
