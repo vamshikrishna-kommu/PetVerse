@@ -928,6 +928,8 @@ export interface IAppointment {
   ownerId: string;
   vetId?: string;
   clinicId?: string;
+  clinicName?: string;
+  clinicAddress?: string;
   appointmentDate?: string;
   startTime?: string;
   endTime?: string;

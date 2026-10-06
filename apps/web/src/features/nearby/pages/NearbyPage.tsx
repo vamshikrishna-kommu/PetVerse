@@ -543,19 +543,17 @@ export default function NearbyPage() {
                         </a>
                       )}
 
-                      {/* Book Appointment (ONLY enabled for PetVerse registered partner clinics) */}
-                      {clinic.hasOnlineBooking && clinic.ownerId ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/appointments/book?clinicId=${clinic._id}`);
-                          }}
-                          className="btn-secondary py-1.5 px-3 text-xs font-semibold flex items-center gap-1.5 text-primary border-primary/30"
-                        >
-                          <Calendar className="h-3.5 w-3.5" />
-                          Book on PetVerse
-                        </button>
-                      ) : null}
+                      {/* Book Appointment */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/appointments/book?clinicId=${clinic._id}`);
+                        }}
+                        className="btn-secondary py-1.5 px-3 text-xs font-semibold flex items-center gap-1.5 text-primary border-primary/30 hover:bg-primary/10 transition-colors"
+                      >
+                        <Calendar className="h-3.5 w-3.5" />
+                        Book Appointment
+                      </button>
 
                       {/* View Details */}
                       <button

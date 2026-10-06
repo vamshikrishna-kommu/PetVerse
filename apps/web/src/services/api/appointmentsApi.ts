@@ -28,6 +28,8 @@ export const appointmentsApi = {
   bookAppointment: async (data: {
     petId: string;
     clinicId?: string;
+    clinicName?: string;
+    clinicAddress?: string;
     appointmentDate: string;
     startTime: string;
     type: string;

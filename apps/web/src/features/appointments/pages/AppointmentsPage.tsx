@@ -159,6 +159,11 @@ export default function AppointmentsPage() {
                     <span className="flex items-center gap-1.5">
                       <Clock className="h-4 w-4 text-muted" /> {appt.startTime || 'Scheduled'}
                     </span>
+                    {((appt as any).clinicName || (appt as any).clinic?.name) && (
+                      <span className="flex items-center gap-1.5 text-foreground font-medium">
+                        <MapPin className="h-4 w-4 text-primary shrink-0" /> {(appt as any).clinicName || (appt as any).clinic?.name}
+                      </span>
+                    )}
                     {typeof appt.fee === 'number' && appt.fee > 0 && (
                       <span className="flex items-center gap-1 font-semibold text-foreground">
                         <CreditCard className="h-3.5 w-3.5 text-primary" /> {formatCurrency(appt.fee)}

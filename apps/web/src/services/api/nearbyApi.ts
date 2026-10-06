@@ -28,6 +28,8 @@ export interface NearbyQueryParams {
   emergencyOnly?: boolean;
   openNow?: boolean;
   minRating?: number;
+  page?: number;
+  limit?: number;
 }
 
 export const nearbyApi = {

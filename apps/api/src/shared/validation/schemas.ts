@@ -56,13 +56,15 @@ export const snoozeReminderSchema = z.object({
 // ─── Appointment Schemas ──────────────────────────────────────
 export const bookAppointmentSchema = z.object({
   petId: mongoId,
-  clinicId: mongoId.optional(),
+  clinicId: z.string().max(200).optional().nullable().transform((val) => val || undefined),
+  clinicName: z.string().max(200).optional(),
+  clinicAddress: z.string().max(500).optional(),
   appointmentDate: isoDate,
   startTime: z
     .string()
     .regex(/^\d{2}:\d{2}$/, 'Must be in HH:mm format (e.g. "14:30")'),
   type: z.enum(['checkup', 'vaccination', 'surgery', 'grooming', 'consultation']),
-  notes: z.string().max(1000).optional(),
+  notes: z.string().max(1000).optional().nullable().transform((val) => val || undefined),
   fee: z.number().min(0, 'Fee cannot be negative').optional(),
 });
 

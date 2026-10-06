@@ -5,7 +5,9 @@ export interface IAppointmentDocument extends Omit<IAppointment, '_id' | 'ownerI
   _id: mongoose.Types.ObjectId;
   ownerId: mongoose.Types.ObjectId;
   petId: mongoose.Types.ObjectId;
-  clinicId?: mongoose.Types.ObjectId;
+  clinicId?: string | mongoose.Types.ObjectId;
+  clinicName?: string;
+  clinicAddress?: string;
   vetId?: mongoose.Types.ObjectId;
   appointmentDate: string; // YYYY-MM-DD
   startTime: string; // HH:mm (e.g., "10:30")
@@ -29,9 +31,16 @@ const AppointmentSchema = new Schema<IAppointmentDocument>(
       index: true,
     },
     clinicId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Clinic',
+      type: Schema.Types.Mixed,
       index: true,
+    },
+    clinicName: {
+      type: String,
+      trim: true,
+    },
+    clinicAddress: {
+      type: String,
+      trim: true,
     },
     vetId: {
       type: Schema.Types.ObjectId,
@@ -94,7 +103,7 @@ const AppointmentSchema = new Schema<IAppointmentDocument>(
         ret._id = (ret._id as mongoose.Types.ObjectId).toString();
         ret.ownerId = (ret.ownerId as mongoose.Types.ObjectId).toString();
         ret.petId = (ret.petId as mongoose.Types.ObjectId).toString();
-        if (ret.clinicId) ret.clinicId = (ret.clinicId as mongoose.Types.ObjectId).toString();
+        if (ret.clinicId) ret.clinicId = ret.clinicId.toString();
         if (ret.vetId) ret.vetId = (ret.vetId as mongoose.Types.ObjectId).toString();
         delete ret.__v;
         return ret;

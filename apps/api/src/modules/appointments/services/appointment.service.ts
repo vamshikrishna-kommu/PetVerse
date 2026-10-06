@@ -5,13 +5,15 @@ import { reminderRepository } from '../../reminders/repositories/reminder.reposi
 import { notificationService } from '../../notifications/services/notification.service';
 import { eventBus } from '../../events/services/event-bus.service';
 import { TimelineService } from '../../pets/timeline.service';
+import { nearbyService } from '../../nearby/services/nearby.service';
 import { NotFoundError, ForbiddenError, ConflictError, AppError } from '../../../shared/errors/AppError';
 import { DomainEventType } from '@petverse/shared-types';
 import type { IAppointment, IClinic } from '@petverse/shared-types';
 import mongoose from 'mongoose';
 
 export const appointmentService = {
-  async getAvailableSlots(clinicId: string, date: string): Promise<string[]> {
+  async getAvailableSlots(clinicId?: string, date?: string): Promise<string[]> {
+    const targetDate = date || new Date().toISOString().split('T')[0];
     let slotDuration = 30;
     let openTime = '09:00';
     let closeTime = '17:00';
@@ -23,12 +25,12 @@ export const appointmentService = {
         // 1. Holiday or blackout date check
         const holidays = (clinic as any).holidays || [];
         const blackoutDates = (clinic as any).blackoutDates || [];
-        if (holidays.includes(date) || blackoutDates.includes(date)) {
+        if (holidays.includes(targetDate) || blackoutDates.includes(targetDate)) {
           return [];
         }
 
         // 2. Weekly schedule lookup for day of week
-        const dayOfWeek = new Date(date + 'T00:00:00Z')
+        const dayOfWeek = new Date(targetDate + 'T00:00:00Z')
           .toLocaleDateString('en-IN', {
             weekday: 'long',
             timeZone: (clinic as any).timezone || 'UTC',
@@ -91,18 +93,33 @@ export const appointmentService = {
 
     // 4. Query existing bookings and filter out taken slots
     const filter: any = {
-      appointmentDate: date,
+      appointmentDate: targetDate,
       status: { $in: ['scheduled', 'confirmed'] },
     };
 
-    if (clinicId && mongoose.Types.ObjectId.isValid(clinicId)) {
+    if (clinicId) {
       filter.clinicId = clinicId;
     }
 
     const booked = await AppointmentModel.find(filter).exec();
     const bookedTimes = new Set(booked.map((b) => b.startTime));
 
-    return slots.filter((slot) => !bookedTimes.has(slot));
+    // If date is today, also filter out past slots based on current time
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const isToday = targetDate === todayStr;
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    return slots.filter((slot) => {
+      if (bookedTimes.has(slot)) return false;
+      if (isToday) {
+        const [h, m] = slot.split(':').map(Number);
+        const slotMinutes = h * 60 + m;
+        // Don't show slots in the past (allow 10-minute booking preparation window)
+        if (slotMinutes <= currentMinutes + 10) return false;
+      }
+      return true;
+    });
   },
 
   async bookAppointment(
@@ -110,6 +127,8 @@ export const appointmentService = {
     data: {
       petId: string;
       clinicId?: string;
+      clinicName?: string;
+      clinicAddress?: string;
       appointmentDate: string;
       startTime: string;
       type: any;
@@ -120,14 +139,15 @@ export const appointmentService = {
     // 1. Verify pet ownership
     const pet = await petService.getPetById(data.petId, ownerId);
 
-    // 2. Prevent past appointment dates
+    // 2. Prevent past appointment dates (with 15-minute clock skew grace window)
     const requestedDateTime = new Date(`${data.appointmentDate}T${data.startTime}:00`);
-    if (requestedDateTime.getTime() < Date.now()) {
+    const graceWindowMs = 15 * 60 * 1000;
+    if (requestedDateTime.getTime() + graceWindowMs < Date.now()) {
       throw new AppError('Cannot book an appointment in the past', 400, 'INVALID_DATE');
     }
 
     // 3. Double-booking conflict check
-    if (data.clinicId && mongoose.Types.ObjectId.isValid(data.clinicId)) {
+    if (data.clinicId) {
       const conflict = await AppointmentModel.findOne({
         clinicId: data.clinicId,
         appointmentDate: data.appointmentDate,
@@ -140,18 +160,36 @@ export const appointmentService = {
       }
     }
 
-    // 4. Calculate end time (30 mins default)
+    // 4. Resolve clinic metadata if clinicId is provided
+    let clinicName = data.clinicName;
+    let clinicAddress = data.clinicAddress;
+
+    if (data.clinicId && (!clinicName || !clinicAddress)) {
+      try {
+        const clinic = await nearbyService.getClinicById(data.clinicId);
+        if (clinic) {
+          clinicName = clinicName || clinic.name;
+          clinicAddress = clinicAddress || clinic.address;
+        }
+      } catch {
+        // Fallback gracefully if clinic lookup is unavailable
+      }
+    }
+
+    // 5. Calculate end time (30 mins default)
     const [h, m] = data.startTime.split(':').map(Number);
     const endMinutes = h * 60 + m + 30;
     const endH = Math.floor(endMinutes / 60).toString().padStart(2, '0');
     const endM = (endMinutes % 60).toString().padStart(2, '0');
     const endTime = `${endH}:${endM}`;
 
-    // 5. Create Appointment document
+    // 6. Create Appointment document
     const appointmentDoc = await AppointmentModel.create({
       ownerId,
       petId: data.petId,
       clinicId: data.clinicId || undefined,
+      clinicName: clinicName || undefined,
+      clinicAddress: clinicAddress || undefined,
       appointmentDate: data.appointmentDate,
       startTime: data.startTime,
       endTime,
@@ -166,14 +204,15 @@ export const appointmentService = {
 
     const appointment = appointmentDoc.toJSON() as unknown as IAppointment;
 
-    // 6. Auto-create Reminder record (24 hours prior)
+    // 7. Auto-create Reminder record (24 hours prior)
+    const clinicLabel = clinicName ? ` at ${clinicName}` : '';
     const reminderTrigger = new Date(requestedDateTime.getTime() - 24 * 60 * 60 * 1000);
     const reminder = await reminderRepository.create({
       ownerId,
       petId: data.petId,
       type: 'appointment',
       title: `Upcoming Veterinary Appointment for ${pet.name}`,
-      message: `Appointment scheduled for ${data.appointmentDate} at ${data.startTime}.`,
+      message: `Appointment scheduled for ${data.appointmentDate} at ${data.startTime}${clinicLabel}.`,
       frequency: 'once',
       timezone: 'UTC',
       nextTrigger: reminderTrigger > new Date() ? reminderTrigger.toISOString() : requestedDateTime.toISOString(),
@@ -185,23 +224,23 @@ export const appointmentService = {
 
     await AppointmentModel.findByIdAndUpdate(appointment._id, { reminderId: reminder._id.toString() });
 
-    // 7. Dispatch Notification
+    // 8. Dispatch Notification
     await notificationService.dispatch(
       ownerId,
       'Appointment Booked Successfully',
-      `Appointment for ${pet.name} set for ${data.appointmentDate} at ${data.startTime}.`,
+      `Appointment for ${pet.name} set for ${data.appointmentDate} at ${data.startTime}${clinicLabel}.`,
       'appointment',
       'medium',
       ['in-app'],
       { appointmentId: appointment._id, petId: data.petId }
     );
 
-    // 8. Emit EventBus Event & Timeline Entry
+    // 9. Emit EventBus Event & Timeline Entry
     await eventBus.publish(
       appointment._id.toString(),
       'Appointment',
       DomainEventType.AppointmentBooked,
-      { appointmentId: appointment._id.toString(), petId: data.petId, ownerId },
+      { appointmentId: appointment._id.toString(), petId: data.petId, ownerId, clinicName },
       { source: 'appointment-service', userId: ownerId },
       ownerId
     );
@@ -210,8 +249,8 @@ export const appointmentService = {
       petId: data.petId,
       type: 'doctor_visit',
       title: 'Appointment Scheduled',
-      description: `Appointment booked for ${data.appointmentDate} at ${data.startTime}.`,
-      metadata: { appointmentId: appointment._id },
+      description: `Appointment booked for ${data.appointmentDate} at ${data.startTime}${clinicLabel}.`,
+      metadata: { appointmentId: appointment._id, clinicName },
     });
 
     return appointment;
@@ -319,14 +358,15 @@ export const appointmentService = {
       throw new AppError('Cannot reschedule a completed appointment', 400, 'APPOINTMENT_COMPLETED');
     }
 
-    // 2. Reject past dates/times
+    // 2. Reject past dates/times (with 15-minute grace window)
     const requestedDateTime = new Date(`${data.appointmentDate}T${data.startTime}:00`);
-    if (requestedDateTime.getTime() < Date.now()) {
+    const graceWindowMs = 15 * 60 * 1000;
+    if (requestedDateTime.getTime() + graceWindowMs < Date.now()) {
       throw new AppError('Cannot reschedule an appointment to the past', 400, 'INVALID_DATE');
     }
 
     // 3. Double-booking conflict check
-    if (appt.clinicId && mongoose.Types.ObjectId.isValid(appt.clinicId.toString())) {
+    if (appt.clinicId) {
       const conflict = await AppointmentModel.findOne({
         _id: { $ne: appt._id },
         clinicId: appt.clinicId,

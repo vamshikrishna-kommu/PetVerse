@@ -153,6 +153,41 @@ describe('P0-4: Zod Validation Schemas', () => {
       });
       expect(result.success).toBe(false);
     });
+
+    it('accepts external clinic IDs (such as OpenStreetMap and Google Places IDs)', () => {
+      const osmResult = bookAppointmentSchema.safeParse({
+        petId: 'b'.repeat(24),
+        clinicId: 'osm:hyd:001',
+        clinicName: 'Olive Pet Clinic',
+        appointmentDate: validDate,
+        startTime: '10:30',
+        type: 'checkup',
+      });
+      expect(osmResult.success).toBe(true);
+
+      const googleResult = bookAppointmentSchema.safeParse({
+        petId: 'b'.repeat(24),
+        clinicId: 'ChIJN1t_tDeuEmsRUsoyG83frY4',
+        appointmentDate: validDate,
+        startTime: '10:30',
+        type: 'checkup',
+      });
+      expect(googleResult.success).toBe(true);
+    });
+
+    it('normalizes empty string or null clinicId to undefined', () => {
+      const result = bookAppointmentSchema.safeParse({
+        petId: 'b'.repeat(24),
+        clinicId: '',
+        appointmentDate: validDate,
+        startTime: '10:30',
+        type: 'checkup',
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.clinicId).toBeUndefined();
+      }
+    });
   });
 
   // ─── Cancel Appointment ───────────────────────────────────
