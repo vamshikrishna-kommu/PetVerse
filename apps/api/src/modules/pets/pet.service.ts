@@ -38,8 +38,13 @@ export const petService = {
   ): Promise<{ data: IPet[]; total: number; page: number; limit: number }> {
     const filter: FilterQuery<IPetDocument> = { ownerId };
 
-    if (query.search) {
-      filter.$text = { $search: query.search };
+    if (query.search && query.search.trim()) {
+      const q = query.search.trim();
+      filter.$or = [
+        { name: new RegExp(q, 'i') },
+        { breed: new RegExp(q, 'i') },
+        { microchipId: new RegExp(q, 'i') },
+      ];
     }
     if (query.species) {
       filter.species = query.species;
@@ -50,9 +55,7 @@ export const petService = {
 
     const sortField = query.sortBy || 'createdAt';
     const sortOrder = query.sortOrder === 'asc' ? 1 : -1;
-    const sort: Record<string, 1 | -1> = query.search 
-      ? { score: { $meta: 'textScore' } as any, [sortField]: sortOrder }
-      : { [sortField]: sortOrder };
+    const sort: Record<string, 1 | -1> = { [sortField]: sortOrder };
 
     const page = query.page || 1;
     const limit = query.limit || 20;

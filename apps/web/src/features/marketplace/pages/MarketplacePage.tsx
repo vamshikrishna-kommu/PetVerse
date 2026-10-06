@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import {
   ShoppingBag,
   Search,
@@ -46,12 +46,24 @@ const SPECIES_TABS: { id: string; label: string; icon: string }[] = [
 
 export default function MarketplacePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'catalog' | 'orders'>('catalog');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get('category') || 'all');
   const [selectedSpecies, setSelectedSpecies] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>(searchParams.get('search') || searchParams.get('q') || '');
   const [sortBy, setSortBy] = useState<'featured' | 'price_asc' | 'price_desc' | 'rating'>('featured');
+
+  useEffect(() => {
+    const q = searchParams.get('search') || searchParams.get('q');
+    if (q !== null && q !== searchQuery) {
+      setSearchQuery(q);
+    }
+    const cat = searchParams.get('category');
+    if (cat && cat !== selectedCategory) {
+      setSelectedCategory(cat);
+    }
+  }, [searchParams]);
 
   // Cart store
   const {

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
   Search,
@@ -33,10 +33,18 @@ import { cn } from '@/shared/utils/cn';
 import type { ILostFoundReport } from '../api/lostFoundApi';
 
 export default function LostFoundPage() {
+  const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'lost' | 'found'>('lost');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('search') || searchParams.get('q') || '');
   const [speciesFilter, setSpeciesFilter] = useState('');
+
+  useEffect(() => {
+    const q = searchParams.get('search') || searchParams.get('q');
+    if (q !== null && q !== search) {
+      setSearch(q);
+    }
+  }, [searchParams]);
   
   // Modals state
   const [reportModalType, setReportModalType] = useState<'lost' | 'found' | null>(null);

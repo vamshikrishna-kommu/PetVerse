@@ -1,11 +1,52 @@
 import { useNavigate } from 'react-router-dom';
-import { Search, Menu, Sun, Moon, LogOut, User, Settings, ChevronDown, Bell } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import {
+  Search,
+  Menu,
+  Sun,
+  Moon,
+  LogOut,
+  User,
+  Settings,
+  ChevronDown,
+  Bell,
+  PawPrint,
+  ShoppingBag,
+  MapPin,
+  MessageSquare,
+  AlertTriangle,
+  Stethoscope,
+  Scan,
+  Flame,
+  X,
+  ArrowRight,
+} from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/app/store/auth.store';
 import { useUIStore } from '@/app/store/ui.store';
 import { useNotificationFeed, useUnreadCount, useMarkNotificationRead } from '@/features/notifications/hooks/useNotifications';
 import { cn, getInitials, stringToColor } from '@/shared/utils/cn';
+
+interface SearchShortcut {
+  title: string;
+  category: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
+}
+
+const STATIC_SEARCH_TARGETS: SearchShortcut[] = [
+  { title: 'My Pets Directory', category: 'Pet Care', url: '/pets', icon: PawPrint },
+  { title: 'Add New Pet Profile', category: 'Pet Care', url: '/pets/new', icon: PawPrint },
+  { title: 'Pet Care Marketplace & Products', category: 'Shop', url: '/marketplace', icon: ShoppingBag },
+  { title: 'Nearby Veterinary Clinics (Hyderabad)', category: 'Clinics', url: '/nearby', icon: MapPin },
+  { title: 'Lost & Found Pet Registry', category: 'Community', url: '/lost-found', icon: AlertTriangle },
+  { title: 'Community Pet Forum', category: 'Community', url: '/community', icon: MessageSquare },
+  { title: 'Visual Breed Identifier AI', category: 'AI Tools', url: '/ai/breed-scan', icon: Scan },
+  { title: 'AI Symptom Checker & Triage', category: 'AI Tools', url: '/ai/assistant', icon: Stethoscope },
+  { title: 'Emergency Hospital Finder', category: 'Emergency', url: '/emergency', icon: Flame, badge: '24/7' },
+  { title: 'My Profile & Records', category: 'Account', url: '/profile', icon: User },
+];
 
 export default function Navbar() {
   const { user, logout } = useAuthStore();
@@ -14,8 +55,11 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   
   const { data: unreadCount } = useUnreadCount();
   const { data: notifications } = useNotificationFeed();
@@ -30,10 +74,29 @@ export default function Navbar() {
       if (notificationRef.current && !notificationRef.current.contains(e.target as Node)) {
         setShowNotifications(false);
       }
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setSearchFocused(false);
+      }
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  // Global ⌘K / Ctrl+K keyboard shortcut
+  useEffect(() => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        setSearchFocused(true);
+      } else if (e.key === 'Escape' && searchFocused) {
+        setSearchFocused(false);
+        searchInputRef.current?.blur();
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [searchFocused]);
 
   const handleLogout = () => {
     logout();
@@ -46,6 +109,45 @@ export default function Navbar() {
 
   const avatarColor = stringToColor(fullName);
 
+  // Filter shortcuts based on user query
+  const filteredShortcuts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return STATIC_SEARCH_TARGETS.slice(0, 6);
+    return STATIC_SEARCH_TARGETS.filter(
+      (item) =>
+        item.title.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q)
+    );
+  }, [searchQuery]);
+
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+
+    setSearchFocused(false);
+    // Intelligent contextual routing based on query keywords
+    const lower = q.toLowerCase();
+    if (lower.includes('clinic') || lower.includes('vet') || lower.includes('hospital') || lower.includes('doctor')) {
+      navigate(`/nearby?search=${encodeURIComponent(q)}`);
+    } else if (lower.includes('food') || lower.includes('toy') || lower.includes('treat') || lower.includes('product') || lower.includes('collar') || lower.includes('shampoo')) {
+      navigate(`/marketplace?search=${encodeURIComponent(q)}`);
+    } else if (lower.includes('lost') || lower.includes('found') || lower.includes('missing')) {
+      navigate(`/lost-found?search=${encodeURIComponent(q)}`);
+    } else if (lower.includes('post') || lower.includes('discuss') || lower.includes('forum')) {
+      navigate(`/community?search=${encodeURIComponent(q)}`);
+    } else {
+      // Default to pets search
+      navigate(`/pets?search=${encodeURIComponent(q)}`);
+    }
+  };
+
+  const handleSelectShortcut = (url: string) => {
+    setSearchFocused(false);
+    setSearchQuery('');
+    navigate(url);
+  };
+
   return (
     <header className="sticky top-0 z-30 flex h-navbar items-center gap-2 sm:gap-4 border-b border-border bg-surface/80 px-3 sm:px-6 backdrop-blur-xl">
       {/* Mobile menu toggle */}
@@ -57,29 +159,166 @@ export default function Navbar() {
         <Menu className="h-5 w-5" />
       </button>
 
-      {/* Search */}
-      <div className="flex flex-1 items-center min-w-0">
-        <div
+      {/* Global Search Bar & Live Dropdown */}
+      <div ref={searchContainerRef} className="relative flex flex-1 items-center min-w-0 max-w-md">
+        <form
+          onSubmit={handleSearchSubmit}
           className={cn(
-            'relative flex max-w-sm flex-1 items-center gap-2 rounded-lg border bg-surface-2 px-2.5 py-1.5 sm:px-3 sm:py-2 text-sm transition-all duration-200 min-w-0',
+            'relative flex w-full items-center gap-2 rounded-xl border bg-surface-2 px-2.5 py-1.5 sm:px-3 sm:py-2 text-sm transition-all duration-200 min-w-0',
             searchFocused
-              ? 'border-primary shadow-glow'
+              ? 'border-primary ring-2 ring-primary/20 shadow-glow bg-surface'
               : 'border-border hover:border-border-strong'
           )}
         >
           <Search className="h-4 w-4 shrink-0 text-muted" />
           <input
+            ref={searchInputRef}
             type="search"
-            placeholder="Search pets, records, products…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search pets, records, products, clinics…"
             onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
             className="flex-1 min-w-0 bg-transparent text-xs sm:text-sm text-foreground placeholder:text-muted placeholder:truncate focus:outline-none"
             aria-label="Global search"
           />
-          <kbd className="hidden rounded bg-surface-3 px-1.5 py-0.5 text-[10px] font-mono text-muted sm:block">
-            ⌘K
-          </kbd>
-        </div>
+          {searchQuery ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                searchInputRef.current?.focus();
+              }}
+              className="p-0.5 text-muted hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ) : (
+            <kbd className="hidden rounded bg-surface-3 px-1.5 py-0.5 text-[10px] font-mono text-muted sm:block">
+              ⌘K
+            </kbd>
+          )}
+        </form>
+
+        {/* Search Results Dropdown */}
+        <AnimatePresence>
+          {searchFocused && (
+            <motion.div
+              initial={{ opacity: 0, y: 6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 4, scale: 0.98 }}
+              transition={{ duration: 0.15 }}
+              className="absolute left-0 right-0 top-full mt-2 rounded-2xl border border-border bg-surface shadow-2xl shadow-black/15 overflow-hidden z-50 divide-y divide-border/60"
+            >
+              {/* Contextual Search Redirects when user is typing */}
+              {searchQuery.trim() && (
+                <div className="p-2 bg-primary/5">
+                  <p className="px-3 py-1 text-[11px] font-semibold text-muted uppercase tracking-wider">
+                    Search in category
+                  </p>
+                  <div className="grid grid-cols-2 gap-1 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchFocused(false);
+                        navigate(`/pets?search=${encodeURIComponent(searchQuery.trim())}`);
+                      }}
+                      className="flex items-center gap-2 p-2 rounded-xl text-xs font-medium text-foreground hover:bg-surface-2 transition-colors text-left"
+                    >
+                      <PawPrint className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <span className="truncate">Pets: "{searchQuery.trim()}"</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchFocused(false);
+                        navigate(`/marketplace?search=${encodeURIComponent(searchQuery.trim())}`);
+                      }}
+                      className="flex items-center gap-2 p-2 rounded-xl text-xs font-medium text-foreground hover:bg-surface-2 transition-colors text-left"
+                    >
+                      <ShoppingBag className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                      <span className="truncate">Store: "{searchQuery.trim()}"</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchFocused(false);
+                        navigate(`/nearby?search=${encodeURIComponent(searchQuery.trim())}`);
+                      }}
+                      className="flex items-center gap-2 p-2 rounded-xl text-xs font-medium text-foreground hover:bg-surface-2 transition-colors text-left"
+                    >
+                      <MapPin className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                      <span className="truncate">Clinics: "{searchQuery.trim()}"</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchFocused(false);
+                        navigate(`/community?search=${encodeURIComponent(searchQuery.trim())}`);
+                      }}
+                      className="flex items-center gap-2 p-2 rounded-xl text-xs font-medium text-foreground hover:bg-surface-2 transition-colors text-left"
+                    >
+                      <MessageSquare className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                      <span className="truncate">Community: "{searchQuery.trim()}"</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Navigation Shortcuts */}
+              <div className="p-2 max-h-64 overflow-y-auto">
+                <p className="px-3 py-1 text-[11px] font-semibold text-muted uppercase tracking-wider">
+                  {searchQuery.trim() ? 'Matching Pages & Tools' : 'Quick Navigation'}
+                </p>
+                {filteredShortcuts.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-muted">
+                    No matching tools found for "{searchQuery.trim()}"
+                  </div>
+                ) : (
+                  <div className="space-y-0.5 mt-1">
+                    {filteredShortcuts.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.url}
+                          type="button"
+                          onClick={() => handleSelectShortcut(item.url)}
+                          className="flex items-center justify-between w-full p-2.5 rounded-xl text-left hover:bg-surface-2 transition-colors group"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="p-1.5 rounded-lg bg-surface-3 text-foreground group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+                              <Icon className="h-4 w-4 shrink-0" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                                {item.title}
+                              </p>
+                              <p className="text-[10px] text-muted">{item.category}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {item.badge && (
+                              <span className="badge text-[9px] px-1.5 py-0.5 bg-rose-500/10 text-rose-500 font-bold">
+                                {item.badge}
+                              </span>
+                            )}
+                            <ArrowRight className="h-3.5 w-3.5 text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer hint */}
+              <div className="p-2.5 bg-surface-2/60 text-center text-[11px] text-muted flex items-center justify-between px-4">
+                <span>Press <strong className="text-foreground">Enter</strong> to search across all records</span>
+                <span className="hidden sm:inline">ESC to dismiss</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Right actions */}

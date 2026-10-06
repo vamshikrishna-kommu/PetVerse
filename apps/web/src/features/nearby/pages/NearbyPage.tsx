@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useNearbyServices } from '../hooks/useNearby';
 import {
   MapPin,
@@ -48,6 +48,7 @@ export const HYDERABAD_LOCALITIES = [
 
 export default function NearbyPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Location State
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(HYDERABAD_CENTER);
@@ -55,14 +56,22 @@ export default function NearbyPage() {
   const [geoNotice, setGeoNotice] = useState<string | null>(null);
 
   // Filter States
-  const [searchInput, setSearchInput] = useState<string>('');
-  const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+  const [searchInput, setSearchInput] = useState<string>(searchParams.get('search') || searchParams.get('q') || '');
+  const [debouncedSearch, setDebouncedSearch] = useState<string>(searchParams.get('search') || searchParams.get('q') || '');
   const [selectedLocality, setSelectedLocality] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('');
   const [radiusKm, setRadiusKm] = useState<number>(25);
   const [emergencyOnly, setEmergencyOnly] = useState<boolean>(false);
   const [openNowOnly, setOpenNowOnly] = useState<boolean>(false);
   const [minRating, setMinRating] = useState<number>(0);
+
+  useEffect(() => {
+    const q = searchParams.get('search') || searchParams.get('q');
+    if (q !== null && q !== searchInput) {
+      setSearchInput(q);
+      setDebouncedSearch(q.trim());
+    }
+  }, [searchParams]);
 
   // Interaction State
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);

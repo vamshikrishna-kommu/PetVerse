@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, PawPrint, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,12 +13,22 @@ type SortOption = 'createdAt-desc' | 'createdAt-asc' | 'name-asc' | 'name-desc';
 
 export default function PetsListPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // State for queries
-  const [searchInput, setSearchInput] = useState('');
+  const initialSearch = searchParams.get('search') || searchParams.get('q') || '';
+  const [searchInput, setSearchInput] = useState(initialSearch);
   const debouncedSearch = useDebounce(searchInput, 400);
   const [speciesFilter, setSpeciesFilter] = useState<string>('');
   const [sortOption, setSortOption] = useState<SortOption>('createdAt-desc');
+
+  // Sync state if URL changes externally
+  useEffect(() => {
+    const q = searchParams.get('search') || searchParams.get('q');
+    if (q !== null && q !== searchInput) {
+      setSearchInput(q);
+    }
+  }, [searchParams]);
 
   // Parse sort option
   const [sortBy, sortOrder] = useMemo(() => sortOption.split('-') as [string, 'asc'|'desc'], [sortOption]);

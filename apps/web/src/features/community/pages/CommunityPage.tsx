@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   MessageSquare,
   Heart,
@@ -30,13 +30,21 @@ import { toast } from 'sonner';
 const POPULAR_TAGS = ['all', 'wellness', 'nutrition', 'training', 'rescues', 'health', 'puppy', 'seniordogs'];
 
 export default function CommunityPage() {
+  const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
   const { data: petsData } = usePets();
   const pets: IPet[] = petsData?.data || [];
 
-  const [selectedTag, setSelectedTag] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedTag, setSelectedTag] = useState<string>(searchParams.get('tag') || 'all');
+  const [searchQuery, setSearchQuery] = useState<string>(searchParams.get('search') || searchParams.get('q') || '');
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    const q = searchParams.get('search') || searchParams.get('q');
+    if (q !== null && q !== searchQuery) {
+      setSearchQuery(q);
+    }
+  }, [searchParams]);
 
   // Create form state
   const [newPost, setNewPost] = useState({
