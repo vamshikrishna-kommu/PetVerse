@@ -290,18 +290,18 @@ export default function BookAppointmentPage() {
           </div>
 
           {/* Submit */}
-          <div className="pt-4 border-t border-border flex justify-end gap-3 sm:gap-4">
+          <div className="pt-4 border-t border-border flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4">
             <button
               type="button"
               onClick={() => navigate('/appointments')}
-              className="px-5 sm:px-6 py-2.5 rounded-xl border border-border text-sm font-semibold hover:bg-surface-2 transition-colors"
+              className="w-full sm:w-auto px-5 sm:px-6 py-3 rounded-xl border border-border text-sm font-semibold hover:bg-surface-2 transition-colors text-center"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={bookAppointment.isPending || !startTime || !petId}
-              className="px-5 sm:px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 shadow-md transition-all flex items-center gap-2"
+              className="w-full sm:w-auto px-6 sm:px-8 py-3.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50 shadow-md transition-all flex items-center justify-center gap-2"
             >
               {bookAppointment.isPending ? 'Confirming...' : 'Confirm Booking'}
             </button>

@@ -247,13 +247,13 @@ export default function AddPetPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-4">
+                <div className="flex justify-end pt-6 pb-4">
                   <button
                     type="button"
                     onClick={() => handleNextTab('health')}
-                    className="rounded-xl bg-surface-2 px-6 py-2.5 text-sm font-semibold text-foreground hover:bg-surface-3 transition-colors"
+                    className="w-full sm:w-auto rounded-xl bg-primary px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:bg-primary/90 transition-all text-center"
                   >
-                    Continue to Health
+                    Continue to Health Details →
                   </button>
                 </div>
               </div>
@@ -295,14 +295,14 @@ export default function AddPetPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-between pt-4">
-                  <button type="button" onClick={() => setActiveTab('basic')} className="text-sm font-medium text-muted hover:text-foreground">Back</button>
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 pb-4">
+                  <button type="button" onClick={() => setActiveTab('basic')} className="text-sm font-semibold text-muted hover:text-foreground w-full sm:w-auto text-center py-2.5">← Back</button>
                   <button
                     type="button"
                     onClick={() => handleNextTab('lifestyle')}
-                    className="rounded-xl bg-surface-2 px-6 py-2.5 text-sm font-semibold text-foreground hover:bg-surface-3 transition-colors"
+                    className="w-full sm:w-auto rounded-xl bg-primary px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/25 hover:bg-primary/90 transition-all text-center"
                   >
-                    Continue to Lifestyle
+                    Continue to Lifestyle Details →
                   </button>
                 </div>
               </div>
@@ -334,13 +334,13 @@ export default function AddPetPage() {
 
                 </div>
 
-                <div className="flex items-center justify-between pt-8 border-t border-border">
-                  <button type="button" onClick={() => setActiveTab('health')} className="text-sm font-medium text-muted hover:text-foreground">Back</button>
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-8 pb-4 border-t border-border">
+                  <button type="button" onClick={() => setActiveTab('health')} className="text-sm font-semibold text-muted hover:text-foreground w-full sm:w-auto text-center py-2.5">← Back</button>
                   
                   <button
                     type="submit"
                     disabled={createPet.isPending || !isValid}
-                    className="flex items-center gap-2 rounded-xl bg-primary px-8 py-3 text-sm font-bold text-white shadow-lg shadow-primary/30 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 hover:-translate-y-0.5 active:translate-y-0"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/30 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 text-center"
                   >
                     {createPet.isPending ? (
                       <><Loader2 className="h-5 w-5 animate-spin" /> Saving...</>

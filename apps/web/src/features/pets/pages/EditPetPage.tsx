@@ -649,11 +649,11 @@ export default function EditPetPage() {
             )}
 
             {/* Actions */}
-            <div className="flex items-center justify-between pt-6 border-t border-border">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-6 pb-2 border-t border-border">
               <button
                 type="button"
                 onClick={() => navigate(`/pets/${petId}`)}
-                className="flex items-center gap-2 rounded-xl border border-border bg-surface px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-2"
+                className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-5 py-3 text-sm font-medium text-foreground transition-colors hover:bg-surface-2"
               >
                 <X className="h-4 w-4" />
                 Cancel
@@ -663,7 +663,7 @@ export default function EditPetPage() {
                 type="submit"
                 id="edit-pet-save"
                 disabled={isSaving}
-                className="flex items-center gap-2 rounded-xl bg-primary px-8 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/30 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 hover:-translate-y-0.5 active:translate-y-0"
+                className="flex items-center justify-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/30 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 hover:-translate-y-0.5 active:translate-y-0"
               >
                 {isSaving ? (
                   <>

@@ -300,10 +300,10 @@
 
   /* Container variants */
   .container-page {
-    @apply mx-auto w-full max-w-7xl px-3.5 sm:px-6 lg:px-8;
+    @apply mx-auto w-full max-w-7xl px-3.5 sm:px-6 lg:px-8 pb-24 sm:pb-28 lg:pb-8;
   }
   .container-narrow {
-    @apply mx-auto w-full max-w-3xl px-3.5 sm:px-6;
+    @apply mx-auto w-full max-w-3xl px-3.5 sm:px-6 pb-24 sm:pb-28 lg:pb-8;
   }
 
   /* Safe Area Utilities */

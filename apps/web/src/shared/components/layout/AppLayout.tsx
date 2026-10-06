@@ -79,9 +79,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18, ease: 'easeOut' }}
-              className="h-full min-w-0"
+              className="min-h-full min-w-0 flex flex-col pb-28 sm:pb-32 lg:pb-8"
             >
-              {children}
+              <div className="flex-1 min-w-0">
+                {children}
+              </div>
+              {/* Dedicated bottom spacer for mobile bottom navigation so content is NEVER covered */}
+              <div className="h-16 sm:h-20 lg:hidden shrink-0 pointer-events-none" aria-hidden="true" />
             </motion.div>
           </AnimatePresence>
         </main>
