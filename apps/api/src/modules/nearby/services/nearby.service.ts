@@ -5,13 +5,14 @@ import { UserModel } from '../../users/user.model';
 import { NotFoundError } from '../../../shared/errors/AppError';
 import type { IClinic } from '@petverse/shared-types';
 import { env } from '../../../config/env';
+import { logger } from '../../../shared/utils/logger';
 import {
   googlePlacesService,
   calculateDistanceKm,
   matchLocalityFromAddress,
   type GooglePlacesSearchOptions,
 } from './google-places.service';
-import { osmPlacesService } from './osm-places.service';
+import { osmPlacesService, VERIFIED_HYDERABAD_CLINICS } from './osm-places.service';
 
 export const nearbyService = {
   /**
@@ -128,7 +129,25 @@ export const nearbyService = {
         });
       }
 
-      petverseDocs = await ClinicModel.aggregate(pipeline).exec();
+      try {
+        petverseDocs = await ClinicModel.aggregate(pipeline).exec();
+      } catch (geoErr) {
+        logger.warn('[NearbyService] $geoNear failed (unindexed or missing 2dsphere in MongoDB), falling back to regular query', {
+          error: (geoErr as any)?.message,
+        });
+        const fallbackFilter: any = {};
+        if (query.type) fallbackFilter.type = query.type;
+        if (query.emergencyOnly) fallbackFilter.emergencyAvailable = true;
+        if (query.minRating) fallbackFilter['ratings.avg'] = { $gte: query.minRating };
+        if (query.search) {
+          fallbackFilter.$or = [
+            { name: new RegExp(query.search, 'i') },
+            { address: new RegExp(query.search, 'i') },
+            { services: new RegExp(query.search, 'i') },
+          ];
+        }
+        petverseDocs = await ClinicModel.find(fallbackFilter).lean().exec();
+      }
     } else {
       const filter: any = {};
       if (query.type) filter.type = query.type;
@@ -188,52 +207,90 @@ export const nearbyService = {
       clinicsMap.set(clinicObj._id, clinicObj);
     }
 
-    // 2. Discover clinics via Google Places API (if configured) or 100% Free OpenStreetMap & Overpass
+    // 2. Discover clinics via Google Places API (if configured and working) or 100% Free OpenStreetMap
     let discoveredSource: 'google_places' | 'openstreetmap' | 'none' = 'none';
-    if (googlePlacesService.isConfigured()) {
-      const placesResult = await googlePlacesService.discoverHyderabadClinics({
-        lat: query.lat,
-        lng: query.lng,
-        radiusKm: query.radiusKm,
-        search: query.search,
-        locality: query.locality,
-        emergencyOnly: query.emergencyOnly,
-        openNow: query.openNow,
-        minRating: query.minRating,
-      });
+    let hasGoogleResults = false;
 
-      if (placesResult.isConfigured) {
-        discoveredSource = 'google_places';
-        for (const clinic of placesResult.clinics) {
+    if (googlePlacesService.isConfigured()) {
+      try {
+        const placesResult = await googlePlacesService.discoverHyderabadClinics({
+          lat: query.lat,
+          lng: query.lng,
+          radiusKm: query.radiusKm,
+          search: query.search,
+          locality: query.locality,
+          emergencyOnly: query.emergencyOnly,
+          openNow: query.openNow,
+          minRating: query.minRating,
+        });
+
+        if (placesResult.isConfigured && placesResult.clinics && placesResult.clinics.length > 0) {
+          discoveredSource = 'google_places';
+          hasGoogleResults = true;
+          for (const clinic of placesResult.clinics) {
+            const existingKey = clinic.placeId || clinic._id;
+            if (!clinicsMap.has(existingKey)) {
+              clinicsMap.set(existingKey, clinic);
+            }
+          }
+        }
+      } catch (googleErr) {
+        logger.warn('[NearbyService] Google Places call failed, falling back to OpenStreetMap', {
+          error: (googleErr as any)?.message,
+        });
+      }
+    }
+
+    // If Google Places is NOT configured OR returned 0 clinics (e.g. invalid key, quota limit on Render, or restricted IP),
+    // seamlessly fall back to 100% Free OpenStreetMap & verified Hyderabad directory so users never see 0 clinics or an error!
+    if (!hasGoogleResults) {
+      try {
+        const osmResult = await osmPlacesService.discoverHyderabadClinics({
+          lat: query.lat,
+          lng: query.lng,
+          radiusKm: query.radiusKm,
+          search: query.search,
+          locality: query.locality,
+          emergencyOnly: query.emergencyOnly,
+          openNow: query.openNow,
+          minRating: query.minRating,
+        });
+
+        discoveredSource = 'openstreetmap';
+        for (const clinic of osmResult.clinics) {
           const existingKey = clinic.placeId || clinic._id;
           if (!clinicsMap.has(existingKey)) {
             clinicsMap.set(existingKey, clinic);
           }
         }
+      } catch (osmErr) {
+        logger.error('[NearbyService] OpenStreetMap discovery failed', {
+          error: (osmErr as any)?.message,
+        });
       }
-    } else {
-      // 100% Free OpenStreetMap & Overpass discovery (Zero cost, no API keys or credit card needed)
-      const osmResult = await osmPlacesService.discoverHyderabadClinics({
-        lat: query.lat,
-        lng: query.lng,
-        radiusKm: query.radiusKm,
-        search: query.search,
-        locality: query.locality,
-        emergencyOnly: query.emergencyOnly,
-        openNow: query.openNow,
-        minRating: query.minRating,
-      });
+    }
 
+    // Absolute fallback: If both online discovery calls returned 0 and no search filter was specified, load baseline VERIFIED_HYDERABAD_CLINICS
+    if (clinicsMap.size === 0 && !query.search && !query.locality) {
       discoveredSource = 'openstreetmap';
-      for (const clinic of osmResult.clinics) {
-        const existingKey = clinic.placeId || clinic._id;
-        if (!clinicsMap.has(existingKey)) {
-          clinicsMap.set(existingKey, clinic);
-        }
+      for (const clinic of VERIFIED_HYDERABAD_CLINICS) {
+        clinicsMap.set(clinic.placeId || clinic._id, { ...clinic });
       }
     }
 
     let combined = Array.from(clinicsMap.values());
+
+    // Filter by search keyword if provided
+    if (query.search && query.search.trim().length > 0) {
+      const q = query.search.toLowerCase().trim();
+      combined = combined.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.address.toLowerCase().includes(q) ||
+          (c.locality && c.locality.toLowerCase().includes(q)) ||
+          (c.services && c.services.some((s) => s.toLowerCase().includes(q)))
+      );
+    }
 
     // Filter by locality if provided
     if (query.locality && query.locality.toLowerCase() !== 'all') {

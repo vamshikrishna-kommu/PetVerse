@@ -90,16 +90,13 @@ export function InteractiveFreeOsmMap({
           attributionControl: true,
         });
 
-        // Add CartoDB Voyager / OpenStreetMap free tiles (sleek, high-res, zero-cost)
-        L.tileLayer(
-          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-          {
-            attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/" target="_blank">CARTO</a>',
-            subdomains: 'abcd',
-            maxZoom: 19,
-          }
-        ).addTo(map);
+        // Add official OpenStreetMap free tiles (100% free, zero cost, no API keys or watermarks)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+          subdomains: 'abc',
+          maxZoom: 19,
+        }).addTo(map);
 
         mapInstanceRef.current = map;
         setMapLoaded(true);

@@ -374,12 +374,18 @@ export default function NearbyPage() {
               ))}
             </div>
           ) : isError ? (
-            <div className="card p-10 text-center border-border rounded-2xl">
-              <AlertTriangle className="h-10 w-10 text-rose-500 mx-auto mb-3" />
+            <div className="card p-10 text-center border-border rounded-2xl space-y-3">
+              <AlertTriangle className="h-10 w-10 text-rose-500 mx-auto" />
               <h3 className="text-base font-bold text-foreground">Failed to Load Clinics</h3>
-              <p className="text-xs text-muted max-w-sm mx-auto mt-1 mb-4">
-                We encountered an issue discovering nearby clinics. Please check your connection and try again.
+              <p className="text-xs text-muted max-w-sm mx-auto">
+                We encountered an issue discovering nearby clinics. Click below to reload the directory.
               </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="btn-primary py-2 px-5 text-xs font-semibold mx-auto inline-flex items-center gap-1.5"
+              >
+                Reload Directory
+              </button>
             </div>
           ) : !clinics || clinics.length === 0 ? (
             <div className="card p-12 text-center border-border rounded-2xl">
