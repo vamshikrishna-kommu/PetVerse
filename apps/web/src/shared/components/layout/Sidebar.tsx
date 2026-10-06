@@ -27,6 +27,7 @@ import {
   DollarSign,
   MessageSquare,
   ShoppingBag,
+  Package,
   Heart,
   X,
 } from 'lucide-react';
@@ -75,6 +76,7 @@ const BASE_NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Community Feed', href: '/community', icon: MessageSquare },
       { label: 'Marketplace', href: '/marketplace', icon: ShoppingBag },
+      { label: 'My Orders', href: '/orders', icon: Package },
       { label: 'Adoption Sanctuary', href: '/adoption', icon: Heart },
     ],
   },
@@ -102,6 +104,7 @@ const ADMIN_NAV_GROUP: NavGroup = {
   items: [
     { label: 'Admin Telemetry', href: '/admin', icon: ShieldCheck },
     { label: 'User Directory', href: '/admin/users', icon: Users },
+    { label: 'Order Fulfillment', href: '/admin/orders', icon: Package },
     { label: 'Automation Rules', href: '/admin/automation', icon: Zap },
     { label: 'Event Monitor', href: '/admin/events', icon: Activity },
     { label: 'Push Analytics', href: '/admin/notifications', icon: BarChart3 },

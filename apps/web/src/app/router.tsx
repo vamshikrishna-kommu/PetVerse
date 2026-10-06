@@ -56,17 +56,21 @@ const BookAppointmentPage = lazy(() => import('@/features/appointments/pages/Boo
 const NearbyPage = lazy(() => import('@/features/nearby/pages/NearbyPage'));
 const ProviderDetailPage = lazy(() => import('@/features/nearby/pages/ProviderDetailPage'));
 
-// Expenses, Community, Marketplace, Adoption
+// Expenses, Community, Marketplace, Adoption, Orders
 const ExpensesPage = lazy(() => import('@/features/expenses/pages/ExpensesPage'));
 const CommunityPage = lazy(() => import('@/features/community/pages/CommunityPage'));
 const CommunityPostDetailPage = lazy(() => import('@/features/community/pages/CommunityPostDetailPage'));
 const MarketplacePage = lazy(() => import('@/features/marketplace/pages/MarketplacePage'));
+const CheckoutPage = lazy(() => import('@/features/marketplace/pages/CheckoutPage'));
+const OrdersPage = lazy(() => import('@/features/orders/pages/OrdersPage'));
+const OrderDetailPage = lazy(() => import('@/features/orders/pages/OrderDetailPage'));
 const AdoptionPage = lazy(() => import('@/features/adoption/pages/AdoptionPage'));
 
 // Admin Pages
 const AdminDashboardPage = lazy(() => import('@/features/admin/pages/AdminDashboardPage'));
 const AdminUsersPage = lazy(() => import('@/features/admin/pages/AdminUsersPage'));
 const AdminPetsPage = lazy(() => import('@/features/admin/pages/AdminPetsPage'));
+const AdminOrdersPage = lazy(() => import('@/features/admin/pages/AdminOrdersPage'));
 const AdminLostFoundPage = lazy(() => import('@/features/admin/pages/AdminLostFoundPage'));
 const AdminAuditLogsPage = lazy(() => import('@/features/admin/pages/AdminAuditLogsPage'));
 const AutomationBuilder = lazy(() => import('@/features/admin/pages/AutomationBuilder'));
@@ -153,6 +157,9 @@ export const router = createBrowserRouter([
       { path: '/community', element: <S><CommunityPage /></S> },
       { path: '/community/:postId', element: <S><CommunityPostDetailPage /></S> },
       { path: '/marketplace', element: <S><MarketplacePage /></S> },
+      { path: '/marketplace/checkout', element: <S><CheckoutPage /></S> },
+      { path: '/orders', element: <S><OrdersPage /></S> },
+      { path: '/orders/:orderId', element: <S><OrderDetailPage /></S> },
       { path: '/adoption', element: <S><AdoptionPage /></S> },
 
       // Admin routes (guarded by AdminRoute)
@@ -163,6 +170,7 @@ export const router = createBrowserRouter([
           { index: true, element: <S><AdminDashboardPage /></S> },
           { path: 'users', element: <S><AdminUsersPage /></S> },
           { path: 'pets', element: <S><AdminPetsPage /></S> },
+          { path: 'orders', element: <S><AdminOrdersPage /></S> },
           { path: 'lost-found', element: <S><AdminLostFoundPage /></S> },
           { path: 'audit-logs', element: <S><AdminAuditLogsPage /></S> },
           { path: 'automation', element: <S><AutomationBuilder /></S> },

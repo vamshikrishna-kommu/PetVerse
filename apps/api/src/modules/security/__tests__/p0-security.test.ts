@@ -40,6 +40,7 @@ describe('P0 Security Regression Tests', () => {
   const userBId = new mongoose.Types.ObjectId().toString();
   let petAId: string;
   let vaccinationRecordId: string;
+  let clinicId: string;
 
   beforeAll(async () => {
     if (mongoose.connection.readyState === 0) {
@@ -159,13 +160,25 @@ describe('P0 Security Regression Tests', () => {
   // P0-1: AppointmentBooked domain event
   // ──────────────────────────────────────────────
   describe('P0-1: Appointment domain events', () => {
-    let clinicId: string;
     let apptId: string;
 
     beforeAll(async () => {
-      const { nearbyService } = await import('../../nearby/services/nearby.service');
-      const result = await nearbyService.getNearbyServices({ lat: 37.7749, lng: -122.4194, radiusKm: 25 });
-      clinicId = result.data[0]?._id;
+      const { ClinicModel } = await import('../../appointments/models/clinic.model');
+      let clinic = await ClinicModel.findOne({ isActive: true });
+      if (!clinic) {
+        clinic = await ClinicModel.create({
+          name: 'P0 Security Vet Clinic',
+          ownerId: new mongoose.Types.ObjectId(),
+          type: 'veterinary_clinic',
+          address: '456 Security Blvd, Hyderabad, TS 500001',
+          location: { type: 'Point', coordinates: [78.4867, 17.385] },
+          phone: '+91 40 2345 6789',
+          services: ['General Practice'],
+          ratings: { avg: 4.8, count: 10 },
+          isVerified: true,
+        });
+      }
+      clinicId = clinic._id.toString();
     });
 
     it('Booking an appointment publishes AppointmentBooked event', async () => {
@@ -237,9 +250,7 @@ describe('P0 Security Regression Tests', () => {
       cascadePetId = pet._id;
 
       // Verify an appointment exists (reuse previous test's clinic)
-      const { nearbyService } = await import('../../nearby/services/nearby.service');
-      const result = await nearbyService.getNearbyServices({ lat: 37.7749, lng: -122.4194, radiusKm: 25 });
-      const cId = result.data[0]?._id;
+      const cId = clinicId;
       const d = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString().split('T')[0];
       const slots = await appointmentService.getAvailableSlots(cId, d);
       if (slots.length > 0) {

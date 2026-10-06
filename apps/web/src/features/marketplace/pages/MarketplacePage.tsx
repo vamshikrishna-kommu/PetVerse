@@ -1,48 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   ShoppingBag,
   Search,
-  Filter,
   Star,
   Plus,
   Minus,
   Trash2,
-  CheckCircle2,
-  Clock,
   Package,
   Truck,
-  ShieldCheck,
   X,
   CreditCard,
-  AlertCircle,
+  ArrowRight,
+  ShieldCheck,
+  CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import {
   useMarketplaceProducts,
   useMyOrders,
-  useCreateOrder,
 } from '../hooks/useMarketplace';
 import { useMarketplaceCartStore } from '../store/cart.store';
 import { useAuthStore } from '@/app/store/auth.store';
-import type { ProductCategory, IProduct } from '@petverse/shared-types';
+import type { IProduct } from '@petverse/shared-types';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/shared/utils/cn';
 
 const CATEGORIES: { id: string; label: string }[] = [
-  { id: 'all', label: 'All Essentials' },
-  { id: 'pharmacy', label: 'Pharmacy & Wellness' },
-  { id: 'food', label: 'Prescription Diets' },
-  { id: 'bedding', label: 'Orthopedic Bedding' },
+  { id: 'all', label: 'All Items' },
+  { id: 'food', label: 'Food & Nutrition' },
   { id: 'grooming', label: 'Grooming & Hygiene' },
-  { id: 'accessories', label: 'Safety & Leashes' },
-  { id: 'toys', label: 'Enrichment Toys' },
+  { id: 'toys', label: 'Toys & Enrichment' },
+  { id: 'accessories', label: 'Collars & Leashes' },
+  { id: 'bedding', label: 'Beds & Mats' },
+  { id: 'pharmacy', label: 'Healthcare & Pharma' },
+];
+
+const SPECIES_TABS: { id: string; label: string; icon: string }[] = [
+  { id: 'all', label: 'All Pets', icon: '🐾' },
+  { id: 'dog', label: 'Dogs', icon: '🐶' },
+  { id: 'cat', label: 'Cats', icon: '🐱' },
+  { id: 'bird', label: 'Birds', icon: '🦜' },
+  { id: 'rabbit', label: 'Small Pets', icon: '🐰' },
 ];
 
 export default function MarketplacePage() {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'catalog' | 'orders'>('catalog');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedSpecies, setSelectedSpecies] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [showCheckoutModal, setShowCheckoutModal] = useState<boolean>(false);
+  const [sortBy, setSortBy] = useState<'featured' | 'price_asc' | 'price_desc' | 'rating'>('featured');
 
   // Cart store
   const {
@@ -53,7 +62,6 @@ export default function MarketplacePage() {
     addItem,
     removeItem,
     updateQuantity,
-    clearCart,
     getTotalCount,
     getTotalPrice,
   } = useMarketplaceCartStore();
@@ -61,22 +69,11 @@ export default function MarketplacePage() {
   // Queries
   const { data: catalogData, isLoading: productsLoading } = useMarketplaceProducts({
     category: selectedCategory !== 'all' ? selectedCategory : undefined,
+    species: selectedSpecies !== 'all' ? selectedSpecies : undefined,
     search: searchQuery.trim() || undefined,
   });
 
   const { data: myOrders, isLoading: ordersLoading } = useMyOrders();
-  const createOrderMutation = useCreateOrder();
-
-  // Shipping address form
-  const [shippingForm, setShippingForm] = useState({
-    fullName: user ? `${user.profile.firstName} ${user.profile.lastName}` : '',
-    phone: user?.phone || '',
-    street: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    country: 'United States',
-  });
 
   const handleAddToCart = (product: IProduct) => {
     if (product.stock <= 0) {
@@ -87,106 +84,146 @@ export default function MarketplacePage() {
     toast.success(`Added "${product.name}" to cart`);
   };
 
-  const handlePlaceOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) {
-      toast.error('Please log in to complete your checkout');
+  const handleBuyNow = (product: IProduct) => {
+    if (product.stock <= 0) {
+      toast.error('Item is currently out of stock');
       return;
     }
-    if (cartItems.length === 0) {
-      toast.error('Your cart is empty');
-      return;
-    }
-
-    try {
-      const orderPayload = {
-        items: cartItems.map((item) => ({
-          productId: item.product._id,
-          quantity: item.quantity,
-        })),
-        shippingAddress: shippingForm,
-      };
-
-      await createOrderMutation.mutateAsync(orderPayload);
-      clearCart();
-      setShowCheckoutModal(false);
-      closeCart();
-      setActiveTab('orders');
-      toast.success('Order placed successfully! Status: Payment Pending');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to place order');
-    }
+    addItem(product, 1);
+    closeCart();
+    navigate('/marketplace/checkout');
   };
 
   const cartTotal = getTotalPrice();
-  const shippingFee = cartTotal > 45 || cartTotal === 0 ? 0 : 5.0;
-  const grandTotal = Math.round((cartTotal + shippingFee) * 100) / 100;
+  const deliveryCharge = cartTotal > 999 || cartTotal === 0 ? 0 : 49;
+  const grandTotal = cartTotal + deliveryCharge;
+
+  // Filter & sort products locally if needed
+  const displayProducts = useMemo(() => {
+    if (!catalogData?.products) return [];
+    let list = [...catalogData.products];
+
+    if (sortBy === 'price_asc') {
+      list.sort((a, b) => a.price - b.price);
+    } else if (sortBy === 'price_desc') {
+      list.sort((a, b) => b.price - a.price);
+    } else if (sortBy === 'rating') {
+      list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
+    return list;
+  }, [catalogData?.products, sortBy]);
 
   return (
     <div className="container-page max-w-7xl py-8 space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <ShoppingBag className="w-8 h-8 text-primary" /> Pet Care Marketplace
-          </h1>
-          <p className="text-muted text-sm mt-1">
-            Veterinarian-approved diets, clinical supplements, therapeutic beds, and safety gear.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex bg-surface-2 p-1 rounded-xl border border-border text-xs">
-            <button
-              onClick={() => setActiveTab('catalog')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition ${
-                activeTab === 'catalog'
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'text-muted hover:text-foreground'
-              }`}
-            >
-              Shop Catalog
-            </button>
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition ${
-                activeTab === 'orders'
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'text-muted hover:text-foreground'
-              }`}
-            >
-              My Orders ({myOrders?.length || 0})
-            </button>
+      {/* Header Banner */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 p-6 sm:p-8">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/15 text-primary text-xs font-bold uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5" /> India-First Pet Marketplace
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight flex items-center gap-3">
+              <ShoppingBag className="w-9 h-9 text-primary" /> PetVerse Store
+            </h1>
+            <p className="text-muted text-sm sm:text-base max-w-2xl">
+              Authentic veterinary-approved nutrition, pharmaceutical essentials, and premium lifestyle gear with fast pan-India delivery.
+            </p>
           </div>
 
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              to="/orders"
+              className="btn btn-secondary text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-sm"
+            >
+              <Package className="w-4 h-4 text-primary" />
+              <span>My Orders</span>
+              {myOrders && myOrders.length > 0 && (
+                <span className="badge bg-primary/15 text-primary text-[11px] font-bold">
+                  {myOrders.length}
+                </span>
+              )}
+            </Link>
+
+            <button
+              onClick={openCart}
+              className="btn btn-primary text-xs sm:text-sm font-semibold relative flex items-center gap-2 shadow-lg shadow-primary/25"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>Cart</span>
+              {getTotalCount() > 0 && (
+                <span className="w-5 h-5 bg-white text-primary text-[11px] font-black rounded-full flex items-center justify-center shadow">
+                  {getTotalCount()}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs Switcher */}
+      <div className="flex items-center justify-between border-b border-border pb-4">
+        <div className="flex bg-surface-2 p-1 rounded-xl border border-border text-xs sm:text-sm">
           <button
-            onClick={openCart}
-            className="btn btn-primary relative text-xs flex items-center gap-2 shadow-md shadow-primary/20"
+            onClick={() => setActiveTab('catalog')}
+            className={`px-4 py-2 rounded-lg font-semibold transition ${
+              activeTab === 'catalog'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-muted hover:text-foreground'
+            }`}
           >
-            <ShoppingBag className="w-4 h-4" />
-            <span>Cart</span>
-            {getTotalCount() > 0 && (
-              <span className="w-5 h-5 bg-white text-primary text-[10px] font-black rounded-full flex items-center justify-center">
-                {getTotalCount()}
-              </span>
-            )}
+            Explore Catalog
+          </button>
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`px-4 py-2 rounded-lg font-semibold transition ${
+              activeTab === 'orders'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-muted hover:text-foreground'
+            }`}
+          >
+            Recent Orders ({myOrders?.length || 0})
           </button>
         </div>
+
+        {activeTab === 'catalog' && (
+          <div className="hidden sm:flex items-center gap-2 text-xs text-muted">
+            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+            <span>100% Genuine Products • Free Delivery &gt; ₹999</span>
+          </div>
+        )}
       </div>
 
       {/* TAB 1: CATALOG */}
       {activeTab === 'catalog' && (
         <div className="space-y-6">
-          {/* Filters Bar */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1 text-xs">
+          {/* Species Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {SPECIES_TABS.map((species) => (
+              <button
+                key={species.id}
+                onClick={() => setSelectedSpecies(species.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition whitespace-nowrap border ${
+                  selectedSpecies === species.id
+                    ? 'bg-primary text-white border-primary shadow-md shadow-primary/20'
+                    : 'bg-surface-2 text-muted border-border hover:bg-surface-3 hover:text-foreground'
+                }`}
+              >
+                <span>{species.icon}</span>
+                <span>{species.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Category Bar & Search */}
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs scrollbar-none">
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-3 py-1.5 rounded-xl font-medium transition whitespace-nowrap ${
+                  className={`px-3.5 py-2 rounded-xl font-medium transition whitespace-nowrap ${
                     selectedCategory === cat.id
-                      ? 'bg-primary text-white shadow-sm'
+                      ? 'bg-surface-3 text-foreground font-bold border border-border shadow-sm'
                       : 'bg-surface-2 text-muted hover:bg-surface-3 hover:text-foreground'
                   }`}
                 >
@@ -195,114 +232,187 @@ export default function MarketplacePage() {
               ))}
             </div>
 
-            <div className="relative w-full md:w-72">
-              <Search className="w-4 h-4 text-muted absolute left-3 top-2.5" />
-              <input
-                type="text"
-                placeholder="Search food, supplements, toys..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input w-full pl-9 py-1.5 text-xs"
-              />
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1 md:w-64">
+                <Search className="w-4 h-4 text-muted absolute left-3 top-3" />
+                <input
+                  type="text"
+                  placeholder="Search food, treats, toys..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="input w-full pl-9 py-2 text-xs"
+                />
+              </div>
+
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                aria-label="Sort products by"
+                className="input py-2 text-xs font-medium cursor-pointer"
+              >
+                <option value="featured">Featured</option>
+                <option value="price_asc">Price: Low to High</option>
+                <option value="price_desc">Price: High to Low</option>
+                <option value="rating">Highest Rated</option>
+              </select>
             </div>
           </div>
 
           {/* Product Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {catalogData?.products?.map((product) => (
-              <div
-                key={product._id}
-                className="card overflow-hidden border-border hover:border-primary/40 transition flex flex-col justify-between shadow-sm group"
-              >
-                <div>
-                  <div className="relative h-48 bg-surface-3 overflow-hidden">
-                    <img
-                      src={product.images?.[0] || 'https://images.unsplash.com/photo-1541599540903-216a46ca1dc0?w=600&auto=format&fit=crop&q=80'}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                    />
-                    <span className="absolute top-2.5 left-2.5 badge bg-black/60 text-white backdrop-blur-sm border-0 text-[10px] font-bold uppercase tracking-wider">
-                      {product.category}
-                    </span>
-                    {product.stock <= 5 && product.stock > 0 && (
-                      <span className="absolute bottom-2.5 right-2.5 badge bg-amber-500 text-white border-0 text-[10px] font-bold">
-                        Only {product.stock} left
+          {productsLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="card h-80 animate-pulse bg-surface-2/60" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {displayProducts.map((product) => (
+                <div
+                  key={product._id}
+                  className="card overflow-hidden border-border hover:border-primary/50 transition-all duration-200 flex flex-col justify-between shadow-sm hover:shadow-md group"
+                >
+                  <div>
+                    <div className="relative h-52 bg-surface-3 overflow-hidden">
+                      <img
+                        src={product.images?.[0] || 'https://images.unsplash.com/photo-1541599540903-216a46ca1dc0?w=600&auto=format&fit=crop&q=80'}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        loading="lazy"
+                      />
+                      <span className="absolute top-3 left-3 badge bg-black/60 text-white backdrop-blur-sm border-0 text-[10px] font-bold uppercase tracking-wider">
+                        {product.category}
                       </span>
-                    )}
+                      {product.stock <= 5 && product.stock > 0 && (
+                        <span className="absolute bottom-3 right-3 badge bg-amber-500 text-white border-0 text-[10px] font-bold">
+                          Only {product.stock} left
+                        </span>
+                      )}
+                      {product.stock === 0 && (
+                        <span className="absolute bottom-3 right-3 badge bg-rose-500 text-white border-0 text-[10px] font-bold">
+                          Out of Stock
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="p-5 space-y-2.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1 text-amber-500 font-bold">
+                          <Star className="w-3.5 h-3.5 fill-current" />
+                          <span>{product.rating || 4.5}</span>
+                          <span className="text-muted font-normal text-[11px]">
+                            ({product.reviewsCount || 12})
+                          </span>
+                        </div>
+                        {product.petSpecies && product.petSpecies.length > 0 && (
+                          <div className="flex gap-1">
+                            {product.petSpecies.map((sp) => (
+                              <span
+                                key={sp}
+                                className="text-[9px] uppercase font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded"
+                              >
+                                {sp}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <h3 className="text-sm font-bold text-foreground line-clamp-1 group-hover:text-primary transition">
+                        {product.name}
+                      </h3>
+
+                      <p className="text-xs text-muted line-clamp-2 leading-relaxed">
+                        {product.description}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="p-5 space-y-2">
-                    <div className="flex items-center gap-1 text-amber-500 text-xs font-bold">
-                      <Star className="w-3.5 h-3.5 fill-current" />
-                      <span>{product.rating}</span>
-                      <span className="text-muted font-normal text-[11px]">
-                        ({product.reviewsCount} reviews)
+                  <div className="p-5 pt-0 border-t border-border mt-3 space-y-3">
+                    <div className="flex items-baseline justify-between pt-3">
+                      <div>
+                        <span className="text-[10px] text-muted block uppercase font-bold tracking-wider">Price</span>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-xl font-extrabold text-foreground">
+                            {formatCurrency(product.price)}
+                          </span>
+                          {product.price > 500 && (
+                            <span className="text-xs text-muted line-through">
+                              {formatCurrency(Math.round(product.price * 1.15))}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <span className="text-[11px] text-emerald-600 font-medium">
+                        {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
                       </span>
                     </div>
 
-                    <h3 className="text-sm font-bold text-foreground line-clamp-1 group-hover:text-primary transition">
-                      {product.name}
-                    </h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => handleAddToCart(product)}
+                        disabled={product.stock <= 0}
+                        className="btn btn-secondary text-xs flex items-center justify-center gap-1 font-semibold"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Cart
+                      </button>
 
-                    <p className="text-xs text-muted line-clamp-2 leading-relaxed">
-                      {product.description}
-                    </p>
-
-                    {product.petSpecies && product.petSpecies.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {product.petSpecies.map((sp) => (
-                          <span
-                            key={sp}
-                            className="text-[9px] uppercase font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded"
-                          >
-                            {sp}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                      <button
+                        onClick={() => handleBuyNow(product)}
+                        disabled={product.stock <= 0}
+                        className="btn btn-primary text-xs flex items-center justify-center gap-1 font-bold shadow-sm"
+                      >
+                        Buy Now
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="p-5 pt-0 flex items-center justify-between border-t border-border mt-3">
-                  <div>
-                    <span className="text-[10px] text-muted block uppercase">Price</span>
-                    <span className="text-lg font-extrabold text-foreground">
-                      {formatCurrency(product.price)}
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() => handleAddToCart(product)}
-                    disabled={product.stock <= 0}
-                    className="btn btn-primary text-xs flex items-center gap-1.5 shadow-sm"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add to Cart
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* Empty products state */}
-          {(!catalogData?.products || catalogData.products.length === 0) && !productsLoading && (
+          {displayProducts.length === 0 && !productsLoading && (
             <div className="card p-12 text-center border-border space-y-3">
               <ShoppingBag className="w-12 h-12 text-muted mx-auto opacity-40" />
               <h3 className="text-base font-bold text-foreground">No Products Found</h3>
               <p className="text-xs text-muted max-w-sm mx-auto">
-                No items match your filter criteria. Try adjusting the category or clearing the search bar.
+                No items match your filter criteria. Try adjusting species, category, or search keywords.
               </p>
+              <button
+                onClick={() => {
+                  setSelectedCategory('all');
+                  setSelectedSpecies('all');
+                  setSearchQuery('');
+                }}
+                className="btn btn-secondary text-xs"
+              >
+                Reset Filters
+              </button>
             </div>
           )}
         </div>
       )}
 
-      {/* TAB 2: MY ORDERS */}
+      {/* TAB 2: MY ORDERS PREVIEW */}
       {activeTab === 'orders' && (
         <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Recent Orders</h2>
+              <p className="text-xs text-muted">View past purchases and real-time shipment updates</p>
+            </div>
+            <Link to="/orders" className="btn btn-primary text-xs flex items-center gap-2">
+              <span>View All Orders</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
           <div className="space-y-4">
             {myOrders?.map((order) => (
-              <div key={order._id} className="card p-6 border-border space-y-4 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-4">
+              <div key={order._id} className="card p-6 border-border space-y-4 shadow-sm hover:border-primary/40 transition">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold text-foreground">
@@ -312,16 +422,18 @@ export default function MarketplacePage() {
                         className={`badge text-[10px] font-bold uppercase tracking-wider ${
                           order.status === 'delivered'
                             ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
-                            : order.status === 'shipped'
+                            : order.status === 'shipped' || order.status === 'out_for_delivery'
                             ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
+                            : order.status === 'cancelled'
+                            ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
                             : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
                         }`}
                       >
-                        {order.status.replace('_', ' ')}
+                        {order.status.replace(/_/g, ' ')}
                       </span>
                     </div>
                     <span className="text-xs text-muted">
-                      Placed on {new Date(order.createdAt).toLocaleDateString(undefined, {
+                      Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
@@ -329,11 +441,20 @@ export default function MarketplacePage() {
                     </span>
                   </div>
 
-                  <div className="text-right">
-                    <span className="text-xs text-muted block">Order Total</span>
-                    <span className="text-base font-black text-foreground">
-                      {formatCurrency(order.totalAmount)}
-                    </span>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <span className="text-xs text-muted block">Order Total</span>
+                      <span className="text-base font-black text-foreground">
+                        {formatCurrency(order.totalAmount)}
+                      </span>
+                    </div>
+                    <Link
+                      to={`/orders/${order._id}`}
+                      className="btn btn-primary text-xs flex items-center gap-1.5 font-bold"
+                    >
+                      <span>Track Order</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
                   </div>
                 </div>
 
@@ -362,17 +483,23 @@ export default function MarketplacePage() {
                 </div>
 
                 {/* Shipping address footer */}
-                <div className="pt-3 border-t border-border flex items-center justify-between text-[11px] text-muted">
+                <div className="pt-3 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-muted gap-2">
                   <div className="flex items-center gap-1.5">
                     <Truck className="w-3.5 h-3.5 text-primary" />
                     <span>
                       Shipping to: {order.shippingAddress.street}, {order.shippingAddress.city},{' '}
-                      {order.shippingAddress.state} {order.shippingAddress.postalCode}
+                      {order.shippingAddress.state} - {order.shippingAddress.postalCode}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1 text-amber-500 font-semibold">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Payment: {order.paymentStatus}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="capitalize font-semibold text-foreground">
+                      Payment: {order.paymentStatus}
+                    </span>
+                    {order.trackingNumber && (
+                      <span className="badge bg-primary/10 text-primary text-[10px] font-mono">
+                        AWB: {order.trackingNumber}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -383,7 +510,7 @@ export default function MarketplacePage() {
                 <Package className="w-12 h-12 text-muted mx-auto opacity-40" />
                 <h3 className="text-base font-bold text-foreground">No Orders Yet</h3>
                 <p className="text-xs text-muted max-w-sm mx-auto">
-                  When you purchase wellness products or therapeutic diets, your order tracking will appear here.
+                  When you purchase pet essentials or diets, your order tracking will appear here.
                 </p>
                 <button
                   onClick={() => setActiveTab('catalog')}
@@ -399,7 +526,7 @@ export default function MarketplacePage() {
 
       {/* SLIDE-OVER CART DRAWER */}
       {isCartOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-surface h-full shadow-2xl flex flex-col justify-between border-l border-border animate-in slide-in-from-right duration-200">
             {/* Drawer Header */}
             <div className="p-5 border-b border-border flex items-center justify-between">
@@ -485,7 +612,7 @@ export default function MarketplacePage() {
                   <div className="flex justify-between">
                     <span>Standard Shipping</span>
                     <span className="font-bold text-foreground">
-                      {shippingFee === 0 ? 'FREE' : formatCurrency(shippingFee)}
+                      {deliveryCharge === 0 ? 'FREE (Orders > ₹999)' : formatCurrency(deliveryCharge)}
                     </span>
                   </div>
                   <div className="flex justify-between pt-2 border-t border-border text-sm font-black text-foreground">
@@ -495,158 +622,16 @@ export default function MarketplacePage() {
                 </div>
 
                 <button
-                  onClick={() => setShowCheckoutModal(true)}
-                  className="btn btn-primary w-full py-2.5 text-xs font-bold flex items-center justify-center gap-2 shadow-md"
+                  onClick={() => {
+                    closeCart();
+                    navigate('/marketplace/checkout');
+                  }}
+                  className="btn btn-primary w-full py-3 text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-primary/20"
                 >
                   <CreditCard className="w-4 h-4" /> Proceed to Checkout ({formatCurrency(grandTotal)})
                 </button>
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* CHECKOUT MODAL */}
-      {showCheckoutModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="card max-w-lg w-full p-6 border-border space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Package className="w-5 h-5 text-primary" /> Delivery & Checkout
-              </h3>
-              <button
-                onClick={() => setShowCheckoutModal(false)}
-                className="text-muted hover:text-foreground text-sm font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Payment Notice banner */}
-            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <span>
-                <strong>Payment Notice:</strong> As real payment gateway credentials are not yet configured for this environment, your order will be created with status <span className="font-bold underline">Payment Pending</span>.
-              </span>
-            </div>
-
-            <form onSubmit={handlePlaceOrder} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">
-                  Recipient Full Name *
-                </label>
-                <input
-                  type="text"
-                  value={shippingForm.fullName}
-                  onChange={(e) => setShippingForm({ ...shippingForm, fullName: e.target.value })}
-                  className="input w-full text-xs"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1">
-                    Contact Phone *
-                  </label>
-                  <input
-                    type="tel"
-                    value={shippingForm.phone}
-                    onChange={(e) => setShippingForm({ ...shippingForm, phone: e.target.value })}
-                    className="input w-full text-xs"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1">
-                    Country *
-                  </label>
-                  <input
-                    type="text"
-                    value={shippingForm.country}
-                    onChange={(e) => setShippingForm({ ...shippingForm, country: e.target.value })}
-                    className="input w-full text-xs"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">
-                  Street Address *
-                </label>
-                <input
-                  type="text"
-                  placeholder="123 Pet Wellness Ave, Apt 4B"
-                  value={shippingForm.street}
-                  onChange={(e) => setShippingForm({ ...shippingForm, street: e.target.value })}
-                  className="input w-full text-xs"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1">
-                    City *
-                  </label>
-                  <input
-                    type="text"
-                    value={shippingForm.city}
-                    onChange={(e) => setShippingForm({ ...shippingForm, city: e.target.value })}
-                    className="input w-full text-xs"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1">
-                    State / UT *
-                  </label>
-                  <input
-                    type="text"
-                    value={shippingForm.state}
-                    onChange={(e) => setShippingForm({ ...shippingForm, state: e.target.value })}
-                    className="input w-full text-xs"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1">
-                    PIN Code *
-                  </label>
-                  <input
-                    type="text"
-                    value={shippingForm.postalCode}
-                    onChange={(e) => setShippingForm({ ...shippingForm, postalCode: e.target.value })}
-                    className="input w-full text-xs"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 bg-surface-2 rounded-xl text-xs flex justify-between font-bold text-foreground">
-                <span>Total Due:</span>
-                <span className="text-primary">{formatCurrency(grandTotal)}</span>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-border">
-                <button
-                  type="button"
-                  onClick={() => setShowCheckoutModal(false)}
-                  className="btn btn-secondary text-xs"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={createOrderMutation.isPending}
-                  className="btn btn-primary text-xs flex items-center gap-2"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  {createOrderMutation.isPending ? 'Confirming...' : 'Place Order'}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

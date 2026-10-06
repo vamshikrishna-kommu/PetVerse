@@ -35,7 +35,16 @@ interface InteractiveGoogleMapProps {
   className?: string;
 }
 
-export function InteractiveGoogleMap({
+export function InteractiveGoogleMap(props: InteractiveGoogleMapProps) {
+  // If Google Maps API key is not configured, seamlessly use 100% Free OpenStreetMap & Leaflet
+  if (!isGoogleMapsConfigured()) {
+    return <InteractiveFreeOsmMap {...props} />;
+  }
+
+  return <GoogleMapInner {...props} />;
+}
+
+function GoogleMapInner({
   clinics,
   userCoords,
   selectedClinicId,
@@ -43,20 +52,6 @@ export function InteractiveGoogleMap({
   height = '600px',
   className = '',
 }: InteractiveGoogleMapProps) {
-  // If Google Maps API key is not configured, seamlessly use 100% Free OpenStreetMap & Leaflet
-  if (!isGoogleMapsConfigured()) {
-    return (
-      <InteractiveFreeOsmMap
-        clinics={clinics}
-        userCoords={userCoords}
-        selectedClinicId={selectedClinicId}
-        onSelectClinic={onSelectClinic}
-        height={height}
-        className={className}
-      />
-    );
-  }
-
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);

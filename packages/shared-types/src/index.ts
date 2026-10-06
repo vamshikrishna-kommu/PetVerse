@@ -97,11 +97,15 @@ export type ProductCategory =
 
 export type OrderStatus =
   | 'payment_pending'
-  | 'pending'
+  | 'placed'
+  | 'confirmed'
   | 'processing'
+  | 'packed'
   | 'shipped'
+  | 'out_for_delivery'
   | 'delivered'
   | 'cancelled'
+  | 'payment_failed'
   | 'refunded';
 
 export type ExpenseCategory =
@@ -1060,10 +1064,19 @@ export interface IOrderItem {
   image?: string;
 }
 
+export interface IOrderTimelineEntry {
+  status: OrderStatus;
+  timestamp: string;
+  note?: string;
+}
+
 export interface IOrder {
   _id: string;
   userId: string;
   items: IOrderItem[];
+  subtotal?: number;
+  deliveryCharge?: number;
+  discount?: number;
   totalAmount: number;
   currency: string;
   status: OrderStatus;
@@ -1075,9 +1088,18 @@ export interface IOrder {
     state: string;
     postalCode: string;
     country: string;
+    landmark?: string;
   };
   paymentStatus: 'pending' | 'completed' | 'failed' | 'refunded';
+  paymentMethod?: 'razorpay' | 'cod' | 'test';
   paymentId?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  trackingNumber?: string;
+  courier?: string;
+  estimatedDelivery?: string;
+  timeline?: IOrderTimelineEntry[];
+  cancellationReason?: string;
   createdAt: string;
   updatedAt: string;
 }

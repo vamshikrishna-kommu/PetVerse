@@ -35,6 +35,21 @@ export const marketplaceController = {
     apiResponse.created(res, order);
   }),
 
+  verifyRazorpayPayment: asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId;
+    const orderId = req.params.id as string;
+    const order = await marketplaceService.verifyRazorpayPayment(userId, orderId, req.body);
+    apiResponse.success(res, order);
+  }),
+
+  cancelOrder: asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId;
+    const orderId = req.params.id as string;
+    const isAdmin = req.user?.role === 'admin';
+    const order = await marketplaceService.cancelOrder(userId, orderId, req.body?.reason, isAdmin);
+    apiResponse.success(res, order);
+  }),
+
   getMyOrders: asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.userId;
     const orders = await marketplaceService.getMyOrders(userId);
@@ -48,8 +63,20 @@ export const marketplaceController = {
     apiResponse.success(res, order);
   }),
 
+  listAdminOrders: asyncHandler(async (req: Request, res: Response) => {
+    const result = await marketplaceService.listAdminOrders(req.query as any);
+    apiResponse.success(res, result);
+  }),
+
   updateOrderStatus: asyncHandler(async (req: Request, res: Response) => {
-    const order = await marketplaceService.updateOrderStatus(req.params.id as string, req.body.status);
+    const orderId = req.params.id as string;
+    const { status, trackingNumber, courier, estimatedDelivery, note } = req.body;
+    const order = await marketplaceService.updateOrderStatus(orderId, status, {
+      trackingNumber,
+      courier,
+      estimatedDelivery,
+      note,
+    });
     apiResponse.success(res, order);
   }),
 };
