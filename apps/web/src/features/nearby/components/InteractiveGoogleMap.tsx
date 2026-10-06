@@ -17,6 +17,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { loadGoogleMaps, isGoogleMapsConfigured } from '@/shared/lib/googleMapsLoader';
+import { InteractiveFreeOsmMap } from './InteractiveFreeOsmMap';
 
 declare const google: any;
 
@@ -42,6 +43,20 @@ export function InteractiveGoogleMap({
   height = '600px',
   className = '',
 }: InteractiveGoogleMapProps) {
+  // If Google Maps API key is not configured, seamlessly use 100% Free OpenStreetMap & Leaflet
+  if (!isGoogleMapsConfigured()) {
+    return (
+      <InteractiveFreeOsmMap
+        clinics={clinics}
+        userCoords={userCoords}
+        selectedClinicId={selectedClinicId}
+        onSelectClinic={onSelectClinic}
+        height={height}
+        className={className}
+      />
+    );
+  }
+
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);

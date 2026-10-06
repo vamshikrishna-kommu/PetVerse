@@ -11,6 +11,7 @@ import {
   matchLocalityFromAddress,
   type GooglePlacesSearchOptions,
 } from './google-places.service';
+import { osmPlacesService } from './osm-places.service';
 
 export const nearbyService = {
   /**
@@ -80,7 +81,7 @@ export const nearbyService = {
   }): Promise<{
     data: (IClinic & { distanceKm?: number })[];
     total: number;
-    source: 'google_places' | 'petverse' | 'combined' | 'unconfigured';
+    source: 'google_places' | 'openstreetmap' | 'petverse' | 'combined' | 'unconfigured';
   }> {
     await this.seedClinicsIfEmpty();
 
@@ -187,8 +188,8 @@ export const nearbyService = {
       clinicsMap.set(clinicObj._id, clinicObj);
     }
 
-    // 2. Discover clinics via Google Places API (if configured and permitted)
-    let googleConfigured = false;
+    // 2. Discover clinics via Google Places API (if configured) or 100% Free OpenStreetMap & Overpass
+    let discoveredSource: 'google_places' | 'openstreetmap' | 'none' = 'none';
     if (googlePlacesService.isConfigured()) {
       const placesResult = await googlePlacesService.discoverHyderabadClinics({
         lat: query.lat,
@@ -201,10 +202,30 @@ export const nearbyService = {
         minRating: query.minRating,
       });
 
-      googleConfigured = placesResult.isConfigured;
+      if (placesResult.isConfigured) {
+        discoveredSource = 'google_places';
+        for (const clinic of placesResult.clinics) {
+          const existingKey = clinic.placeId || clinic._id;
+          if (!clinicsMap.has(existingKey)) {
+            clinicsMap.set(existingKey, clinic);
+          }
+        }
+      }
+    } else {
+      // 100% Free OpenStreetMap & Overpass discovery (Zero cost, no API keys or credit card needed)
+      const osmResult = await osmPlacesService.discoverHyderabadClinics({
+        lat: query.lat,
+        lng: query.lng,
+        radiusKm: query.radiusKm,
+        search: query.search,
+        locality: query.locality,
+        emergencyOnly: query.emergencyOnly,
+        openNow: query.openNow,
+        minRating: query.minRating,
+      });
 
-      for (const clinic of placesResult.clinics) {
-        // Deduplicate using Place ID and clinic name
+      discoveredSource = 'openstreetmap';
+      for (const clinic of osmResult.clinics) {
         const existingKey = clinic.placeId || clinic._id;
         if (!clinicsMap.has(existingKey)) {
           clinicsMap.set(existingKey, clinic);
@@ -254,10 +275,12 @@ export const nearbyService = {
       });
     }
 
-    const source: 'google_places' | 'petverse' | 'combined' | 'unconfigured' =
-      petverseDocs.length > 0 && googleConfigured
+    const source: 'google_places' | 'openstreetmap' | 'petverse' | 'combined' | 'unconfigured' =
+      petverseDocs.length > 0 && discoveredSource !== 'none'
         ? 'combined'
-        : googleConfigured
+        : discoveredSource === 'openstreetmap'
+        ? 'openstreetmap'
+        : discoveredSource === 'google_places'
         ? 'google_places'
         : petverseDocs.length > 0
         ? 'petverse'
@@ -291,6 +314,12 @@ export const nearbyService = {
       if (placeClinic) {
         return placeClinic;
       }
+    }
+
+    // 3. Try resolving from OpenStreetMap free directory
+    const osmClinic = await osmPlacesService.getClinicById(id);
+    if (osmClinic) {
+      return osmClinic;
     }
 
     throw new NotFoundError('Clinic');

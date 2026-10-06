@@ -157,6 +157,9 @@ export default function NearbyPage() {
             <span className="badge bg-primary/10 text-primary border-primary/20 text-[11px] font-semibold flex items-center gap-1 py-0.5 px-2.5">
               Powered by Google Places
             </span>
+            <span className="badge bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[11px] font-semibold flex items-center gap-1 py-0.5 px-2.5">
+              100% Free (Zero API Cost)
+            </span>
           </div>
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight">
             Hyderabad Veterinary Directory

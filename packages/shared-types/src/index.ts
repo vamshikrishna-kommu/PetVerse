@@ -1197,7 +1197,7 @@ export interface IClinic {
   isOpenNow?: boolean;
   googleMapsUri?: string;
   placeId?: string;
-  source?: 'google_places' | 'petverse';
+  source?: 'google_places' | 'openstreetmap' | 'petverse';
   distanceKm?: number;
   hasOnlineBooking?: boolean;
   createdAt?: string;
