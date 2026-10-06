@@ -1176,9 +1176,10 @@ export interface INotification {
 export interface IClinic {
   _id: string;
   name: string;
-  ownerId: string;
+  ownerId?: string;
   type?: string;
   address: string;
+  locality?: string;
   location: {
     type: 'Point';
     coordinates: [number, number];
@@ -1187,13 +1188,20 @@ export interface IClinic {
   email?: string;
   website?: string;
   services: string[];
-  openingHours: Record<string, { open: string; close: string }>;
+  openingHours?: Record<string, { open: string; close: string }>;
+  weekdayDescriptions?: string[];
   photos: string[];
   ratings: { avg: number; count: number };
   isVerified: boolean;
   emergencyAvailable?: boolean;
-  createdAt: string;
-  updatedAt: string;
+  isOpenNow?: boolean;
+  googleMapsUri?: string;
+  placeId?: string;
+  source?: 'google_places' | 'petverse';
+  distanceKm?: number;
+  hasOnlineBooking?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // ─── AI ──────────────────────────────────────────────────────

@@ -35,9 +35,10 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
   BCRYPT_ROUNDS: z.coerce.number().default(12),
 
-  // Google OAuth
+  // Google OAuth & Maps Platform
   GOOGLE_CLIENT_ID: optionalNonEmpty,
   GOOGLE_CLIENT_SECRET: optionalNonEmpty,
+  GOOGLE_MAPS_API_KEY: optionalGeneral,
 
   // Cloudinary
   CLOUDINARY_CLOUD_NAME: optionalNonEmpty,

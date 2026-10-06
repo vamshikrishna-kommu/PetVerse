@@ -310,12 +310,17 @@ export const authService = {
     const user = await userRepository.findByEmail(target, '+otpHash +otpExpiry');
     if (!user) throw new NotFoundError('User');
 
-    // If external mail provider is not configured or demo code 123456 is used, allow verification
-    const hasMailProvider = !!(env.SENDGRID_API_KEY || (process.env.SMTP_HOST && process.env.SMTP_USER));
-    const isBypassAllowed = !hasMailProvider || otp === '123456';
+    // If OTP has expired, reject
+    if (user.otpExpiry && new Date() > user.otpExpiry) {
+      throw new AppError('OTP has expired', 400, ERROR_CODES.OTP_EXPIRED);
+    }
 
-    if (!isBypassAllowed) {
-      if (!user.otpHash || !user.otpExpiry || new Date() > user.otpExpiry) {
+    // In non-production, allow demo code 123456 only if no mail provider is configured and no specific OTP was generated
+    const hasMailProvider = !!(env.SENDGRID_API_KEY || (process.env.SMTP_HOST && process.env.SMTP_USER));
+    const isDemoBypass = env.NODE_ENV !== 'production' && otp === '123456' && !hasMailProvider && !user.otpHash;
+
+    if (!isDemoBypass) {
+      if (!user.otpHash || !user.otpExpiry) {
         throw new AppError('OTP has expired', 400, ERROR_CODES.OTP_EXPIRED);
       }
 

@@ -70,8 +70,13 @@ export default function AddPetPage() {
         }
       });
 
-      if (petDataToSubmit.weight) {
-        petDataToSubmit.weight = parseFloat(petDataToSubmit.weight);
+      if (petDataToSubmit.weight !== undefined) {
+        const parsed = parseFloat(petDataToSubmit.weight);
+        if (!isNaN(parsed) && parsed > 0) {
+          petDataToSubmit.weight = parsed;
+        } else {
+          delete petDataToSubmit.weight;
+        }
       }
       
       const pet = await createPet.mutateAsync(petDataToSubmit);
@@ -79,7 +84,7 @@ export default function AddPetPage() {
       // 2. Upload Avatar if present
       if (croppedAvatar) {
         const file = new File([croppedAvatar], 'avatar.webp', { type: 'image/webp' });
-        await petsApi.uploadAvatar(pet._id, file).catch(err => {
+        await petsApi.uploadAvatar(pet._id, file).catch(() => {
           toast.error('Pet created, but failed to upload avatar');
         });
       }
@@ -89,12 +94,21 @@ export default function AddPetPage() {
       setTimeout(() => navigate(`/pets/${pet._id}`), 2500);
     } catch (error: any) {
       if (error.isAxiosError && error.response?.data?.error?.details) {
-        error.response.data.error.details.forEach((err: any) => {
+        const details = error.response.data.error.details;
+        details.forEach((err: any) => {
           setError(err.field as any, { type: 'server', message: err.message });
         });
-        toast.error('Please check the form for errors');
+        const basicFields = ['name', 'species', 'breed', 'gender', 'dob'];
+        const healthFields = ['weight', 'color', 'isVaccinated', 'isSterilized'];
+        if (details.some((d: any) => basicFields.includes(d.field))) {
+          setActiveTab('basic');
+        } else if (details.some((d: any) => healthFields.includes(d.field))) {
+          setActiveTab('health');
+        }
+        const firstMsg = details[0]?.message;
+        toast.error(firstMsg ? `Error: ${firstMsg}` : 'Please check the form for errors');
       } else {
-        toast.error('Failed to add pet. Please try again.');
+        toast.error(error?.response?.data?.error?.message || 'Failed to add pet. Please try again.');
       }
     }
   };

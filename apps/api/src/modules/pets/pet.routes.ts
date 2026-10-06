@@ -9,13 +9,24 @@ import { uploadAvatar, uploadGalleryImages } from '../../middlewares/upload.midd
 
 const router: Router = Router();
 
-const createPetSchema = z.object({
+/**
+ * Accepts both `YYYY-MM-DD` (from HTML <input type="date">) and full ISO-8601
+ * datetime strings (e.g. "2023-05-15T00:00:00.000Z").  Returns the original
+ * string after verifying it resolves to a valid Date so Mongoose can parse it.
+ */
+export const flexibleDate = z
+  .string()
+  .nullish()
+  .refine((v) => !v || !isNaN(Date.parse(v)), { message: 'Invalid date format' })
+  .transform((v) => (v && !isNaN(Date.parse(v)) ? new Date(v).toISOString() : undefined));
+
+export const createPetSchema = z.object({
   name: z.string().min(1).max(50),
   nickname: z.string().max(50).optional(),
   species: z.enum(['dog', 'cat', 'bird', 'rabbit', 'fish', 'reptile', 'other']),
   breed: z.string().max(100).optional(),
   subBreed: z.string().max(100).optional(),
-  dob: z.string().datetime().optional(),
+  dob: flexibleDate,
   estimatedAge: z.string().optional(),
   gender: z.enum(['male', 'female', 'unknown']).default('unknown'),
   weight: z.number().positive().optional(),
@@ -40,10 +51,10 @@ const createPetSchema = z.object({
   favoriteToys: z.array(z.string()).optional(),
   behaviorNotes: z.string().max(1000).optional(),
 
-  adoptionDate: z.string().datetime().optional(),
+  adoptionDate: flexibleDate,
   shelterName: z.string().max(100).optional(),
   insuranceProvider: z.string().max(100).optional(),
-  insuranceExpiry: z.string().datetime().optional(),
+  insuranceExpiry: flexibleDate,
 
   gallery: z.array(z.string()).optional(),
   isAdopted: z.boolean().optional(),
@@ -51,7 +62,7 @@ const createPetSchema = z.object({
   isPublicProfile: z.boolean().default(true),
 });
 
-const updatePetSchema = createPetSchema.partial();
+export const updatePetSchema = createPetSchema.partial();
 
 // All pet routes require authentication
 router.use(authenticate);

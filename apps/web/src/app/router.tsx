@@ -28,6 +28,7 @@ const NotificationsPage = lazy(() => import('@/features/notifications/pages/Noti
 // Pets & Health
 const PetsPage = lazy(() => import('@/features/pets/pages/PetsPage'));
 const AddPetPage = lazy(() => import('@/features/pets/pages/AddPetPage'));
+const EditPetPage = lazy(() => import('@/features/pets/pages/EditPetPage'));
 const PetDetailPage = lazy(() => import('@/features/pets/pages/PetDetailPage'));
 const PetHealthPage = lazy(() => import('@/features/health/pages/PetHealthPage'));
 const PetVaccinationsPage = lazy(() => import('@/features/vaccination/pages/VaccinationDashboardPage').then(m => ({ default: m.VaccinationDashboardPage })));
@@ -120,6 +121,7 @@ export const router = createBrowserRouter([
       { path: '/pets', element: <S><PetsPage /></S> },
       { path: '/pets/new', element: <S><AddPetPage /></S> },
       { path: '/pets/:petId', element: <S><PetDetailPage /></S> },
+      { path: '/pets/:petId/edit', element: <S><EditPetPage /></S> },
       { path: '/pets/:petId/qr', element: <S><PetQRPage /></S> },
       { path: '/pets/:petId/health', element: <S><PetHealthPage /></S> },
       { path: '/pets/:petId/vaccinations', element: <S><PetVaccinationsPage /></S> },

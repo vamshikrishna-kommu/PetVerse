@@ -1,13 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { nearbyApi } from '@/services/api/nearbyApi';
+import { nearbyApi, type NearbyQueryParams } from '@/services/api/nearbyApi';
 
-export function useNearbyServices(params: {
-  lat?: number;
-  lng?: number;
-  radiusKm?: number;
-  type?: string;
-  search?: string;
-}) {
+export function useNearbyServices(params: NearbyQueryParams = {}) {
   return useQuery({
     queryKey: ['nearby-services', params],
     queryFn: () => nearbyApi.getNearbyServices(params),

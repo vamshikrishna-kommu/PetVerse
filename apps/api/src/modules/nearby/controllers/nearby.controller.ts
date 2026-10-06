@@ -11,12 +11,23 @@ export const nearbyController = {
       radiusKm: req.query.radiusKm ? parseFloat(req.query.radiusKm as string) : undefined,
       type: req.query.type as string,
       search: req.query.search as string,
+      locality: req.query.locality as string,
+      emergencyOnly:
+        req.query.emergencyOnly === 'true' ||
+        req.query.emergencyOnly === '1' ||
+        req.query.type === 'emergency_hospital',
+      openNow: req.query.openNow === 'true' || req.query.openNow === '1',
+      minRating: req.query.minRating ? parseFloat(req.query.minRating as string) : undefined,
       page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
       limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 50,
     };
 
     const result = await nearbyService.getNearbyServices(query);
-    apiResponse.success(res, result.data);
+    apiResponse.success(res, result.data, 200, {
+      total: result.total,
+      page: query.page,
+      limit: query.limit,
+    });
   }),
 
   getClinicById: asyncHandler(async (req: Request, res: Response) => {

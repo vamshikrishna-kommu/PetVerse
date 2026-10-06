@@ -18,14 +18,20 @@ export interface IReview {
   createdAt: string;
 }
 
+export interface NearbyQueryParams {
+  lat?: number;
+  lng?: number;
+  radiusKm?: number;
+  type?: string;
+  search?: string;
+  locality?: string;
+  emergencyOnly?: boolean;
+  openNow?: boolean;
+  minRating?: number;
+}
+
 export const nearbyApi = {
-  getNearbyServices: async (params: {
-    lat?: number;
-    lng?: number;
-    radiusKm?: number;
-    type?: string;
-    search?: string;
-  }): Promise<IClinicWithDistance[]> => {
+  getNearbyServices: async (params: NearbyQueryParams = {}): Promise<IClinicWithDistance[]> => {
     const response = await api.get<{ success: boolean; data: IClinicWithDistance[] }>(
       '/nearby/services',
       { params }
