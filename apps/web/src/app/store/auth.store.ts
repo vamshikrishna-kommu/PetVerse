@@ -52,7 +52,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'petverse-auth',
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => localStorage),
       // Only persist non-sensitive fields.
       // accessToken is intentionally NOT persisted — it lives in memory only.
       // On page reload, App.tsx will re-hydrate it via the httpOnly refresh cookie.

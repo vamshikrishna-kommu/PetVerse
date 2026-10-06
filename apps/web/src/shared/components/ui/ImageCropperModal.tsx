@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop';
+import { useState, useRef, useEffect } from 'react';
+import ReactCrop, { type Crop, type PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { X, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,54 +22,80 @@ export function ImageCropperModal({
   const [imgSrc, setImgSrc] = useState('');
   const imgRef = useRef<HTMLImageElement>(null);
   const [crop, setCrop] = useState<Crop>();
+  // Keep the last completed pixel crop for the canvas draw step
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
 
-  // Read file as data url
-  if (imageFile && !imgSrc) {
+  // Read the file into a data-url only when imageFile changes (not on every render)
+  useEffect(() => {
+    if (!imageFile) {
+      setImgSrc('');
+      setCrop(undefined);
+      setCompletedCrop(undefined);
+      return;
+    }
     const reader = new FileReader();
     reader.addEventListener('load', () => setImgSrc(reader.result?.toString() || ''));
     reader.readAsDataURL(imageFile);
-  }
+  }, [imageFile]);
+
+  // Reset crop state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setImgSrc('');
+      setCrop(undefined);
+      setCompletedCrop(undefined);
+    }
+  }, [isOpen]);
 
   function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const { width, height } = e.currentTarget;
-    const crop = centerCrop(
+    const initialCrop = centerCrop(
       makeAspectCrop({ unit: '%', width: 90 }, aspectRatio, width, height),
       width,
-      height
+      height,
     );
-    setCrop(crop);
+    setCrop(initialCrop);
   }
 
   const handleComplete = () => {
-    if (!imgRef.current || !crop) return;
+    if (!imgRef.current || !completedCrop) return;
+
+    const image = imgRef.current;
     const canvas = document.createElement('canvas');
-    const scaleX = imgRef.current.naturalWidth / imgRef.current.width;
-    const scaleY = imgRef.current.naturalHeight / imgRef.current.height;
-    
-    canvas.width = crop.width;
-    canvas.height = crop.height;
+
+    // Scale the crop coordinates from the displayed image size back to natural image size
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+
+    // Output canvas at full natural resolution of the crop area
+    canvas.width = Math.round(completedCrop.width * scaleX);
+    canvas.height = Math.round(completedCrop.height * scaleY);
+
     const ctx = canvas.getContext('2d');
-    
-    if (ctx) {
-      ctx.drawImage(
-        imgRef.current,
-        crop.x * scaleX,
-        crop.y * scaleY,
-        crop.width * scaleX,
-        crop.height * scaleY,
-        0,
-        0,
-        crop.width,
-        crop.height
-      );
-      
-      canvas.toBlob((blob) => {
+    if (!ctx) return;
+
+    ctx.drawImage(
+      image,
+      completedCrop.x * scaleX,
+      completedCrop.y * scaleY,
+      completedCrop.width * scaleX,
+      completedCrop.height * scaleY,
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+
+    canvas.toBlob(
+      (blob) => {
         if (blob) {
           onCropComplete(blob);
           onClose();
         }
-      }, 'image/webp', 0.9);
-    }
+      },
+      'image/webp',
+      0.9,
+    );
   };
 
   if (!isOpen) return null;
@@ -98,6 +124,7 @@ export function ImageCropperModal({
               <ReactCrop
                 crop={crop}
                 onChange={(_, percentCrop) => setCrop(percentCrop)}
+                onComplete={(pixelCrop) => setCompletedCrop(pixelCrop)}
                 aspect={aspectRatio}
                 circularCrop
               >
@@ -121,7 +148,8 @@ export function ImageCropperModal({
             </button>
             <button
               onClick={handleComplete}
-              className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/30 hover:opacity-90 transition-all"
+              disabled={!completedCrop}
+              className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/30 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Check className="h-4 w-4" /> Save Crop
             </button>

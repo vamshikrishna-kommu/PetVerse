@@ -20,17 +20,20 @@ const REFRESH_COOKIE_NAME = 'refreshToken';
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
+  // 'none' is required in production because the frontend and API are on different
+  // origins (cross-site). SameSite=strict would block the cookie on cross-origin
+  // requests, breaking silent refresh. SameSite=none requires Secure=true (HTTPS).
+  sameSite: (env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
-  path: '/api/v1/auth/refresh',
+  path: '/',
 };
 
 /** Clearing options must match exactly to actually delete the cookie */
 const REFRESH_COOKIE_CLEAR_OPTIONS = {
   httpOnly: true,
   secure: env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
-  path: '/api/v1/auth/refresh',
+  sameSite: (env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax',
+  path: '/',
 };
 
 
