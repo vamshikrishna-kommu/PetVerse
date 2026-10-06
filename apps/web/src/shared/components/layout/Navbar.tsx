@@ -47,21 +47,21 @@ export default function Navbar() {
   const avatarColor = stringToColor(fullName);
 
   return (
-    <header className="sticky top-0 z-30 flex h-navbar items-center gap-4 border-b border-border bg-surface/80 px-4 backdrop-blur-xl sm:px-6">
+    <header className="sticky top-0 z-30 flex h-navbar items-center gap-2 sm:gap-4 border-b border-border bg-surface/80 px-3 sm:px-6 backdrop-blur-xl">
       {/* Mobile menu toggle */}
       <button
         onClick={toggleSidebar}
-        className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-foreground lg:hidden"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-foreground lg:hidden"
         aria-label="Toggle menu"
       >
         <Menu className="h-5 w-5" />
       </button>
 
       {/* Search */}
-      <div className="flex flex-1 items-center">
+      <div className="flex flex-1 items-center min-w-0">
         <div
           className={cn(
-            'relative flex max-w-sm flex-1 items-center gap-2 rounded-lg border bg-surface-2 px-3 py-2 text-sm transition-all duration-200',
+            'relative flex max-w-sm flex-1 items-center gap-2 rounded-lg border bg-surface-2 px-2.5 py-1.5 sm:px-3 sm:py-2 text-sm transition-all duration-200 min-w-0',
             searchFocused
               ? 'border-primary shadow-glow'
               : 'border-border hover:border-border-strong'
@@ -73,7 +73,7 @@ export default function Navbar() {
             placeholder="Search pets, records, products…"
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted focus:outline-none"
+            className="flex-1 min-w-0 bg-transparent text-xs sm:text-sm text-foreground placeholder:text-muted placeholder:truncate focus:outline-none"
             aria-label="Global search"
           />
           <kbd className="hidden rounded bg-surface-3 px-1.5 py-0.5 text-[10px] font-mono text-muted sm:block">

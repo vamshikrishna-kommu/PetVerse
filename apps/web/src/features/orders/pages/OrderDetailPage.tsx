@@ -175,11 +175,11 @@ export default function OrderDetailPage() {
             </div>
           </div>
         ) : (
-          <div className="pt-2">
+          <div className="pt-2 overflow-x-auto -mx-2 px-2 scrollbar-none">
             {/* Horizontal Timeline Bar */}
-            <div className="relative flex items-center justify-between">
+            <div className="relative flex items-center justify-between min-w-[500px] sm:min-w-0 py-2">
               {/* Connecting line */}
-              <div className="absolute left-4 right-4 top-4 h-1 bg-surface-3 -z-0">
+              <div className="absolute left-4 right-4 top-6 h-1 bg-surface-3 -z-0">
                 <div
                   className="h-full bg-primary transition-all duration-500"
                   style={{
@@ -357,8 +357,8 @@ export default function OrderDetailPage() {
 
       {/* Cancel Order Modal */}
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="card p-6 bg-surface border-border rounded-2xl max-w-md w-full shadow-2xl space-y-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="card p-6 bg-surface border-border rounded-2xl max-w-md w-full shadow-2xl space-y-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <h3 className="font-bold text-base text-foreground">Cancel Order</h3>
             <p className="text-xs text-muted">
               Are you sure you want to cancel this order? Any reserved inventory will be restored immediately.

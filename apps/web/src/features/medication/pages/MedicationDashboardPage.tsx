@@ -183,8 +183,8 @@ export default function MedicationDashboardPage() {
 
       {/* New Prescription Modal */}
       {showRxModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl bg-surface border border-border p-6 shadow-xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-lg rounded-2xl bg-surface border border-border p-6 shadow-xl space-y-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="text-lg font-bold text-foreground">Issue New Prescription</h3>
               <button onClick={() => setShowRxModal(false)} className="text-muted hover:text-foreground">

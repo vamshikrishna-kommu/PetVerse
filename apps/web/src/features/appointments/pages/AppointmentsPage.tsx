@@ -183,7 +183,7 @@ export default function AppointmentsPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-2 self-end md:self-center">
+              <div className="flex flex-wrap items-center gap-2 self-stretch sm:self-end md:self-center justify-end">
                 {typeof appt.fee === 'number' &&
                   appt.fee > 0 &&
                   appt.paymentStatus !== 'paid' &&

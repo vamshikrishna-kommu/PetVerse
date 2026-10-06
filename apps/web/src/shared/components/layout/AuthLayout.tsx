@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex w-full bg-background">
+    <div className="min-h-[100dvh] flex w-full bg-background">
       {/* Left Pane - Branding & Graphic (Hidden on mobile) */}
       <div className="hidden lg:flex w-1/2 relative bg-secondary/30 border-r border-border/50 items-center justify-center p-12 overflow-hidden">
         {/* Background Gradients */}
@@ -59,8 +59,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </div>
 
       {/* Right Pane - Auth Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 relative">
-        <Link to="/" className="lg:hidden absolute top-6 left-6 flex items-center gap-2">
+      <div className="w-full lg:w-1/2 flex items-center justify-center px-4 py-16 sm:p-8 md:p-12 relative min-h-[100dvh]">
+        <Link to="/" className="lg:hidden absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 z-10">
           <Heart className="w-6 h-6 text-indigo-500 fill-indigo-500" />
           <span className="text-xl font-bold">PetVerse</span>
         </Link>
@@ -69,7 +69,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
+          className="w-full max-w-md mt-4 sm:mt-0"
         >
           {children}
         </motion.div>

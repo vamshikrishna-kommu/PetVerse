@@ -144,32 +144,35 @@ export default function AddPetPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
         
-        {/* Left sidebar navigation */}
-        <div className="lg:col-span-3 space-y-2">
+        {/* Navigation tabs: horizontal scroll on mobile, vertical stack on desktop */}
+        <div className="lg:col-span-3 flex lg:flex-col overflow-x-auto gap-2 pb-1 lg:pb-0 scrollbar-none">
           <button
+            type="button"
             onClick={() => setActiveTab('basic')}
             className={cn(
-              "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
+              "flex items-center gap-2.5 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 lg:w-full",
               activeTab === 'basic' ? "bg-primary text-white" : "bg-surface text-foreground hover:bg-surface-2"
             )}
           >
             <User className="h-4 w-4" /> Basic Info
           </button>
           <button
+            type="button"
             onClick={() => handleNextTab('health')}
             className={cn(
-              "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
+              "flex items-center gap-2.5 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 lg:w-full",
               activeTab === 'health' ? "bg-primary text-white" : "bg-surface text-foreground hover:bg-surface-2"
             )}
           >
             <Heart className="h-4 w-4" /> Health & Medical
           </button>
           <button
+            type="button"
             onClick={() => handleNextTab('lifestyle')}
             className={cn(
-              "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
+              "flex items-center gap-2.5 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 lg:w-full",
               activeTab === 'lifestyle' ? "bg-primary text-white" : "bg-surface text-foreground hover:bg-surface-2"
             )}
           >
@@ -178,7 +181,7 @@ export default function AddPetPage() {
         </div>
 
         {/* Form Container */}
-        <div className="lg:col-span-9 card p-6 sm:p-8">
+        <div className="lg:col-span-9 card p-4 sm:p-8">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             
             {/* BASIC INFO */}

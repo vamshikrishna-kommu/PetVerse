@@ -111,19 +111,19 @@ export default function DashboardPage() {
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-2 gap-4 sm:grid-cols-4"
+        className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4"
       >
         {statCards.map((card) => {
           const Icon = card.icon;
           return (
             <motion.div key={card.label} variants={itemVariants}>
               <Link to={card.href}>
-                <div className="card-interactive p-5">
-                  <div className={cn('mb-3 inline-flex rounded-xl p-2.5', card.bg)}>
-                    <Icon className={cn('h-5 w-5', card.color)} />
+                <div className="card-interactive p-3.5 sm:p-5">
+                  <div className={cn('mb-2 sm:mb-3 inline-flex rounded-xl p-2 sm:p-2.5', card.bg)}>
+                    <Icon className={cn('h-4 w-4 sm:h-5 sm:w-5', card.color)} />
                   </div>
-                  <p className="text-2xl font-bold text-foreground">{card.value}</p>
-                  <p className="text-sm text-muted">{card.label}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground truncate">{card.value}</p>
+                  <p className="text-xs sm:text-sm text-muted truncate">{card.label}</p>
                 </div>
               </Link>
             </motion.div>
@@ -136,7 +136,7 @@ export default function DashboardPage() {
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+        className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-4"
       >
         {QUICK_ACTIONS.map((action) => {
           const Icon = action.icon;
@@ -145,7 +145,7 @@ export default function DashboardPage() {
               <Link to={action.href}>
                 <div
                   className={cn(
-                    'relative flex items-center gap-3 overflow-hidden rounded-xl p-4 text-white shadow-md transition-all hover:opacity-90 hover:-translate-y-0.5',
+                    'relative flex items-center gap-2 sm:gap-3 overflow-hidden rounded-xl p-3 sm:p-4 text-white shadow-md transition-all hover:opacity-90 hover:-translate-y-0.5',
                     `bg-gradient-to-r ${action.gradient}`
                   )}
                 >

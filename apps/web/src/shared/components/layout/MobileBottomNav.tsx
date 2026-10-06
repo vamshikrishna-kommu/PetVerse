@@ -56,7 +56,7 @@ export default function MobileBottomNav() {
                     </div>
                     <span
                       className={cn(
-                        'text-[10px] font-semibold mt-1 transition-colors',
+                        'text-[9px] sm:text-[10px] font-semibold mt-0.5 sm:mt-1 transition-colors truncate max-w-full',
                         isActive ? 'text-primary font-bold' : 'text-muted'
                       )}
                     >
@@ -75,7 +75,7 @@ export default function MobileBottomNav() {
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
                 cn(
-                  'flex flex-1 flex-col items-center justify-center py-1 transition-all duration-150 active:scale-95',
+                  'flex flex-1 flex-col items-center justify-center py-1 transition-all duration-150 active:scale-95 min-w-0',
                   isActive
                     ? 'text-primary font-semibold'
                     : 'text-muted hover:text-foreground'
@@ -90,7 +90,9 @@ export default function MobileBottomNav() {
                       <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-primary" />
                     )}
                   </div>
-                  <span className="text-[10px] mt-1 tracking-tight">{item.label}</span>
+                  <span className="text-[9px] sm:text-[10px] mt-0.5 sm:mt-1 tracking-tight truncate max-w-full text-center">
+                    {item.label}
+                  </span>
                 </>
               )}
             </NavLink>
@@ -102,7 +104,7 @@ export default function MobileBottomNav() {
           onClick={toggleSidebar}
           aria-label="Toggle Navigation Drawer"
           className={cn(
-            'flex flex-1 flex-col items-center justify-center py-1 transition-all duration-150 active:scale-95',
+            'flex flex-1 flex-col items-center justify-center py-1 transition-all duration-150 active:scale-95 min-w-0',
             sidebarOpen ? 'text-primary font-semibold' : 'text-muted hover:text-foreground'
           )}
         >
@@ -112,7 +114,9 @@ export default function MobileBottomNav() {
               <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-primary" />
             )}
           </div>
-          <span className="text-[10px] mt-1 tracking-tight">More</span>
+          <span className="text-[9px] sm:text-[10px] mt-0.5 sm:mt-1 tracking-tight truncate max-w-full text-center">
+            More
+          </span>
         </button>
       </div>
     </nav>

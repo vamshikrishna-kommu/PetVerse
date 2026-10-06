@@ -155,8 +155,8 @@ export default function AdminUsersPage() {
             <p className="text-xs mt-1">Try adjusting your search or role filters.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="table-responsive-wrapper">
+            <table className="w-full text-left text-xs min-w-[600px]">
               <thead className="bg-surface-2 border-b border-border text-muted font-bold uppercase tracking-wider">
                 <tr>
                   <th className="px-5 py-3">User</th>

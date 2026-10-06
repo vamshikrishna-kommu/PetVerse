@@ -194,14 +194,14 @@ export default function OrdersPage() {
               </div>
 
               {/* Footer Actions */}
-              <div className="flex items-center justify-between pt-2 border-t border-border">
-                <span className="text-xs text-muted">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-border">
+                <span className="text-xs text-muted truncate max-w-full">
                   Ship to: <span className="text-foreground font-medium">{order.shippingAddress?.fullName}</span> ({order.shippingAddress?.city})
                 </span>
 
                 <Link
                   to={`/orders/${order._id}`}
-                  className="btn-primary py-1.5 px-3.5 text-xs font-semibold flex items-center gap-1.5 shadow-sm"
+                  className="btn-primary py-1.5 px-3.5 text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm w-full sm:w-auto shrink-0"
                 >
                   Track & Details
                   <ArrowRight className="w-3.5 h-3.5" />

@@ -812,8 +812,8 @@ export default function SettingsPage() {
 
       {/* DELETE ACCOUNT CONFIRMATION MODAL */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="card max-w-md w-full p-6 border-danger/50 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="card max-w-md w-full p-6 border-danger/50 space-y-4 shadow-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="flex items-center gap-3 text-danger">
               <AlertTriangle className="w-6 h-6 flex-shrink-0" />
               <h3 className="text-lg font-bold">Confirm Account Deletion</h3>

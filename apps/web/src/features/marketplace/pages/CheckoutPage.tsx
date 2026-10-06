@@ -384,12 +384,12 @@ export default function CheckoutPage() {
                   onChange={() => setPaymentMethod('razorpay')}
                   className="mt-1 text-primary focus:ring-primary"
                 />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5">
                     <span className="font-semibold text-sm text-foreground">
                       Razorpay (India UPI, Cards, NetBanking)
                     </span>
-                    <span className="text-[10px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full shrink-0">
                       RECOMMENDED
                     </span>
                   </div>
@@ -413,15 +413,15 @@ export default function CheckoutPage() {
                   value="cod"
                   checked={paymentMethod === 'cod'}
                   onChange={() => setPaymentMethod('cod')}
-                  className="mt-1 text-primary focus:ring-primary"
+                  className="mt-1 text-primary focus:ring-primary shrink-0"
                 />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5">
                     <span className="font-semibold text-sm text-foreground flex items-center gap-1.5">
-                      <Banknote className="w-4 h-4 text-emerald-600" />
+                      <Banknote className="w-4 h-4 text-emerald-600 shrink-0" />
                       Cash on Delivery (COD)
                     </span>
-                    <span className="text-[10px] bg-emerald-500/10 text-emerald-600 font-bold px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] bg-emerald-500/10 text-emerald-600 font-bold px-2 py-0.5 rounded-full shrink-0">
                       NO EXTRA CHARGE
                     </span>
                   </div>
@@ -445,15 +445,15 @@ export default function CheckoutPage() {
                   value="test"
                   checked={paymentMethod === 'test'}
                   onChange={() => setPaymentMethod('test')}
-                  className="mt-1 text-emerald-600 focus:ring-emerald-500"
+                  className="mt-1 text-emerald-600 focus:ring-emerald-500 shrink-0"
                 />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5">
                     <span className="font-semibold text-sm text-foreground flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-emerald-500" />
+                      <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
                       100% Free Test Simulation (Zero Cost)
                     </span>
-                    <span className="text-[10px] bg-emerald-500/10 text-emerald-600 font-bold px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] bg-emerald-500/10 text-emerald-600 font-bold px-2 py-0.5 rounded-full shrink-0">
                       FREE DEMO
                     </span>
                   </div>

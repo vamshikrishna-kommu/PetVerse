@@ -583,7 +583,6 @@ export default function NearbyPage() {
             userCoords={coords}
             selectedClinicId={selectedClinicId}
             onSelectClinic={handleSelectClinic}
-            height="580px"
           />
         </div>
       </div>

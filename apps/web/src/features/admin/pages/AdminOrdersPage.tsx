@@ -150,8 +150,8 @@ export default function AdminOrdersPage() {
             <p className="text-xs font-semibold">No orders found matching the filter criteria.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="table-responsive-wrapper">
+            <table className="w-full text-left text-xs min-w-[700px]">
               <thead className="bg-surface-2 text-muted border-b border-border uppercase font-semibold text-[10px] tracking-wider">
                 <tr>
                   <th className="py-3 px-4">Order ID</th>
@@ -268,8 +268,8 @@ export default function AdminOrdersPage() {
 
       {/* Update Order Status Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="card p-6 bg-surface border-border rounded-2xl max-w-lg w-full shadow-2xl space-y-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="card p-6 bg-surface border-border rounded-2xl max-w-lg w-full shadow-2xl space-y-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-border">
               <h3 className="font-bold text-base text-foreground">
                 Update Order #{selectedOrder._id.slice(-8).toUpperCase()}

@@ -41,7 +41,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     : 'var(--sidebar-width)';
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-[100dvh] min-h-[100dvh] w-full overflow-hidden bg-background">
       {/* Sidebar */}
       <Sidebar />
 
@@ -60,7 +60,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       {/* Main content */}
       <div
-        className="flex flex-1 flex-col overflow-hidden transition-all duration-300"
+        className="flex flex-1 flex-col overflow-hidden transition-all duration-300 min-w-0"
         style={
           !isMobile
             ? { marginLeft: sidebarWidth }
@@ -70,8 +70,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {/* Topbar */}
         <Navbar />
 
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
+        {/* Page content with safe-area spacing reserved for MobileBottomNav */}
+        <main className="flex-1 overflow-y-auto pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] lg:pb-0 min-w-0">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
@@ -79,7 +79,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18, ease: 'easeOut' }}
-              className="h-full"
+              className="h-full min-w-0"
             >
               {children}
             </motion.div>

@@ -135,14 +135,14 @@ export default function PetDetailPage() {
           {pet.isLost ? (
             <button
               onClick={() => handleToggleLost(false)}
-              className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-medium transition-colors hover:bg-emerald-500/20 text-emerald-600"
+              className="flex items-center gap-1.5 sm:gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors hover:bg-emerald-500/20 text-emerald-600"
             >
               <CheckCircle2 className="h-4 w-4" /> Found & Safe
             </button>
           ) : (
             <button
               onClick={() => handleToggleLost(true)}
-              className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm font-medium transition-colors hover:bg-rose-500/20 text-rose-600"
+              className="flex items-center gap-1.5 sm:gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors hover:bg-rose-500/20 text-rose-600"
             >
               <AlertTriangle className="h-4 w-4" /> Report Lost
             </button>
@@ -150,16 +150,16 @@ export default function PetDetailPage() {
 
           <Link
             to={`/pets/${pet._id}/qr`}
-            className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium transition-colors hover:bg-primary/20 text-primary"
+            className="flex items-center gap-1.5 sm:gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors hover:bg-primary/20 text-primary"
           >
             <QrCode className="h-4 w-4" /> QR Tag
           </Link>
-          <button onClick={() => navigate(`/pets/${pet._id}/edit`)} className="flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium transition-colors hover:bg-surface-2 text-foreground">
+          <button onClick={() => navigate(`/pets/${pet._id}/edit`)} className="flex items-center gap-1.5 sm:gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors hover:bg-surface-2 text-foreground">
             <Edit2 className="h-4 w-4" /> Edit Profile
           </button>
           <button 
             onClick={handleDelete}
-            className="flex items-center gap-2 rounded-lg border border-danger/20 bg-danger/10 px-4 py-2 text-sm font-medium transition-colors hover:bg-danger/20 text-danger"
+            className="flex items-center gap-1.5 sm:gap-2 rounded-lg border border-danger/20 bg-danger/10 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors hover:bg-danger/20 text-danger"
           >
             <Trash2 className="h-4 w-4" /> Delete
           </button>
@@ -414,8 +414,8 @@ export default function PetDetailPage() {
 
                   {/* Add Photo Modal */}
                   {isAddingPhoto && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-                      <div className="w-full max-w-md rounded-2xl bg-surface border border-border p-6 shadow-2xl space-y-4">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in overflow-y-auto">
+                      <div className="w-full max-w-md rounded-2xl bg-surface border border-border p-6 shadow-2xl space-y-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
                         <div className="flex items-center justify-between border-b border-border pb-3">
                           <h3 className="text-base font-bold text-foreground">Add Photo to Gallery</h3>
                           <button

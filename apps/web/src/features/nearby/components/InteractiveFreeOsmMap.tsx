@@ -37,7 +37,7 @@ export function InteractiveFreeOsmMap({
   userCoords,
   selectedClinicId,
   onSelectClinic,
-  height = '600px',
+  height,
   className = '',
 }: InteractiveFreeOsmMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -235,8 +235,10 @@ export function InteractiveFreeOsmMap({
 
   return (
     <div
-      className={`relative w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-xl bg-slate-100 dark:bg-slate-900 ${className}`}
-      style={{ height }}
+      className={`relative w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-xl bg-slate-100 dark:bg-slate-900 ${
+        height ? '' : 'h-[300px] sm:h-[400px] lg:h-[580px]'
+      } ${className}`}
+      style={height ? { height } : undefined}
     >
       {/* OpenStreetMap Map Canvas */}
       <div ref={mapContainerRef} className="w-full h-full z-0" />

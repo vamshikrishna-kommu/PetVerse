@@ -56,8 +56,8 @@ export function RescheduleModal({ isOpen, onClose, appointment }: RescheduleModa
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl p-6 relative overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl p-6 relative max-h-[calc(100dvh-2rem)] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-border">
           <div>
@@ -112,7 +112,7 @@ export function RescheduleModal({ isOpen, onClose, appointment }: RescheduleModa
                 No time slots available for {newDate}. Please choose another date.
               </div>
             ) : (
-              <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1">
                 {slots.map((slot) => (
                   <button
                     key={slot}

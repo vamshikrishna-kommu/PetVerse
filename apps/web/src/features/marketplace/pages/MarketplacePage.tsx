@@ -527,9 +527,9 @@ export default function MarketplacePage() {
       {/* SLIDE-OVER CART DRAWER */}
       {isCartOpen && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-surface h-full shadow-2xl flex flex-col justify-between border-l border-border animate-in slide-in-from-right duration-200">
+          <div className="w-full max-w-md bg-surface h-[100dvh] max-h-[100dvh] shadow-2xl flex flex-col justify-between border-l border-border animate-in slide-in-from-right duration-200">
             {/* Drawer Header */}
-            <div className="p-5 border-b border-border flex items-center justify-between">
+            <div className="p-4 sm:p-5 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5 text-primary" />
                 <h2 className="text-base font-bold text-foreground">Shopping Cart</h2>
@@ -546,7 +546,7 @@ export default function MarketplacePage() {
             </div>
 
             {/* Cart Items List */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4 divide-y divide-border">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 divide-y divide-border">
               {cartItems.map((item) => (
                 <div key={item.product._id} className="pt-4 first:pt-0 flex gap-3">
                   <img
@@ -601,9 +601,9 @@ export default function MarketplacePage() {
               )}
             </div>
 
-            {/* Drawer Footer */}
+            {/* Drawer Footer with Safe Area Clearance */}
             {cartItems.length > 0 && (
-              <div className="p-5 border-t border-border space-y-4 bg-surface-2/40">
+              <div className="p-4 sm:p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] border-t border-border space-y-4 bg-surface-2/40">
                 <div className="space-y-1.5 text-xs text-muted">
                   <div className="flex justify-between">
                     <span>Subtotal</span>

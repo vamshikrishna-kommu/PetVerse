@@ -235,8 +235,8 @@ export default function ProviderDetailPage() {
 
       {/* Review Modal */}
       {isReviewModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="card max-w-md w-full p-6 relative bg-surface border-border shadow-2xl rounded-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in overflow-y-auto">
+          <div className="card max-w-md w-full p-6 relative bg-surface border-border shadow-2xl rounded-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <button
               onClick={() => setIsReviewModalOpen(false)}
               className="absolute top-4 right-4 text-muted hover:text-foreground"

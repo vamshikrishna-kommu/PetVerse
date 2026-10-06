@@ -316,8 +316,8 @@ export default function CommunityPage() {
 
       {/* CREATE POST MODAL */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="card max-w-xl w-full p-6 border-border space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="card max-w-xl w-full p-6 border-border space-y-4 shadow-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
                 <MessageSquare className="w-5 h-5 text-primary" /> Share a Pet Story or Tip

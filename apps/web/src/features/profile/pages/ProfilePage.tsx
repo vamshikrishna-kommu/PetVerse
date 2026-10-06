@@ -105,11 +105,11 @@ export default function ProfilePage() {
         </div>
 
         {/* Edit Form */}
-        <div className="card p-6 md:col-span-2 space-y-6">
+        <div className="card p-4 sm:p-6 md:col-span-2 space-y-6">
           <h2 className="text-xl font-bold text-foreground border-b border-border pb-3">Personal Details</h2>
 
           <form onSubmit={handleSave} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-muted uppercase mb-1">First Name</label>
                 <div className="relative">

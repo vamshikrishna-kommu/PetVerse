@@ -400,29 +400,29 @@ export default function AIAssistantPage() {
                 e.preventDefault();
                 handleSendChat();
               }}
-              className="p-4 border-t border-border bg-surface flex items-center gap-3"
+              className="p-3 sm:p-4 border-t border-border bg-surface flex items-center gap-2 sm:gap-3"
             >
               <input
                 type="text"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Ask PetVerse AI about diet, symptoms, wellness, behavior..."
+                placeholder="Ask PetVerse AI about diet, symptoms, wellness..."
                 disabled={isChatLoading}
-                className="input flex-1 text-xs"
+                className="input flex-1 min-w-0 text-xs"
               />
               <button
                 type="submit"
                 disabled={isChatLoading || !chatInput.trim()}
-                className="btn-primary py-2.5 px-4 text-xs font-semibold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
+                className="btn-primary py-2 px-3 sm:py-2.5 sm:px-4 text-xs font-semibold rounded-xl flex items-center gap-1.5 disabled:opacity-50 shrink-0"
               >
                 <Send className="h-3.5 w-3.5" />
-                Send
+                <span className="hidden sm:inline">Send</span>
               </button>
               <button
                 type="button"
                 onClick={resetChat}
                 title="Reset Conversation"
-                className="p-2.5 rounded-xl border border-border text-muted hover:text-foreground hover:bg-surface-2 transition"
+                className="p-2 sm:p-2.5 rounded-xl border border-border text-muted hover:text-foreground hover:bg-surface-2 transition shrink-0"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
               </button>

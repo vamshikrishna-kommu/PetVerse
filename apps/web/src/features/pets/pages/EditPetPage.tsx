@@ -302,16 +302,16 @@ export default function EditPetPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Sidebar */}
-        <div className="lg:col-span-3 space-y-2">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+        {/* Navigation tabs: horizontal scroll on mobile, vertical stack on desktop */}
+        <div className="lg:col-span-3 flex lg:flex-col overflow-x-auto gap-2 pb-1 lg:pb-0 scrollbar-none">
           {tabs.map(({ key, label, Icon }) => (
             <button
               key={key}
               type="button"
               onClick={() => setActiveTab(key)}
               className={cn(
-                'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors',
+                'flex items-center gap-2.5 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 lg:w-full',
                 activeTab === key
                   ? 'bg-primary text-white'
                   : 'bg-surface text-foreground hover:bg-surface-2'
@@ -324,7 +324,7 @@ export default function EditPetPage() {
         </div>
 
         {/* Form */}
-        <div className="lg:col-span-9 card p-6 sm:p-8">
+        <div className="lg:col-span-9 card p-4 sm:p-8">
           <form onSubmit={handleSubmit(onSubmit)} id="edit-pet-form" className="space-y-8">
 
             {/* BASIC INFO */}

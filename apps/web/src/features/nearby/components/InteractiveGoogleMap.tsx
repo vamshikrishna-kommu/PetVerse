@@ -49,7 +49,7 @@ function GoogleMapInner({
   userCoords,
   selectedClinicId,
   onSelectClinic,
-  height = '600px',
+  height,
   className = '',
 }: InteractiveGoogleMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -249,8 +249,10 @@ function GoogleMapInner({
 
   return (
     <div
-      className={`relative w-full rounded-2xl overflow-hidden border border-border bg-surface-2 shadow-sm ${className}`}
-      style={{ height }}
+      className={`relative w-full rounded-2xl overflow-hidden border border-border bg-surface-2 shadow-sm ${
+        height ? '' : 'h-[300px] sm:h-[400px] lg:h-[580px]'
+      } ${className}`}
+      style={height ? { height } : undefined}
     >
       {/* Google Map Container Element */}
       <div ref={mapContainerRef} className="w-full h-full" />

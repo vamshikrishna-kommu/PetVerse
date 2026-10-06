@@ -120,14 +120,14 @@ export default function EmergencyPage() {
   return (
     <div className="container-page max-w-5xl py-8 space-y-8">
       {/* Critical Banner */}
-      <div className="card p-6 bg-rose-500/10 border-rose-500/30 space-y-4">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-rose-600 text-white rounded-2xl shrink-0">
-            <AlertTriangle className="w-8 h-8 animate-pulse" />
+      <div className="card p-4 sm:p-6 bg-rose-500/10 border-rose-500/30 space-y-4">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <div className="p-2.5 sm:p-3 bg-rose-600 text-white rounded-2xl shrink-0">
+            <AlertTriangle className="w-6 h-6 sm:w-8 sm:h-8 animate-pulse" />
           </div>
-          <div className="space-y-1">
-            <h1 className="text-2xl font-black text-rose-600 dark:text-rose-400">Emergency Pet Care Hotline</h1>
-            <p className="text-sm text-foreground leading-relaxed">
+          <div className="space-y-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400">Emergency Pet Care Hotline</h1>
+            <p className="text-xs sm:text-sm text-foreground leading-relaxed">
               If your pet is unconscious, seizing, bleeding profusely, or having severe breathing difficulty, transport them immediately to the nearest 24/7 veterinary hospital.
             </p>
           </div>
@@ -137,64 +137,64 @@ export default function EmergencyPage() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
           <a
             href="tel:1962"
-            className="flex items-center justify-between p-4 rounded-xl bg-card border border-rose-500/20 hover:border-rose-500 transition group shadow-sm"
+            className="flex items-center justify-between p-3.5 sm:p-4 rounded-xl bg-card border border-rose-500/20 hover:border-rose-500 transition group shadow-sm gap-2"
           >
-            <div className="flex items-center gap-3">
-              <PhoneCall className="w-5 h-5 text-rose-500 group-hover:scale-110 transition-transform" />
-              <div>
-                <p className="text-xs font-bold text-foreground">Telangana Animal Ambulance</p>
-                <p className="text-sm font-extrabold text-rose-600">1962 (Toll Free)</p>
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <PhoneCall className="w-4 h-4 sm:w-5 sm:h-5 text-rose-500 group-hover:scale-110 transition-transform shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[11px] sm:text-xs font-bold text-foreground truncate">Telangana Animal Ambulance</p>
+                <p className="text-xs sm:text-sm font-extrabold text-rose-600">1962 (Toll Free)</p>
               </div>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 uppercase">
+            <span className="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 uppercase shrink-0">
               24/7 Govt
             </span>
           </a>
 
           <a
             href="tel:+914023544355"
-            className="flex items-center justify-between p-4 rounded-xl bg-card border border-rose-500/20 hover:border-rose-500 transition group shadow-sm"
+            className="flex items-center justify-between p-3.5 sm:p-4 rounded-xl bg-card border border-rose-500/20 hover:border-rose-500 transition group shadow-sm gap-2"
           >
-            <div className="flex items-center gap-3">
-              <PhoneCall className="w-5 h-5 text-rose-500 group-hover:scale-110 transition-transform" />
-              <div>
-                <p className="text-xs font-bold text-foreground">Blue Cross of Hyderabad</p>
-                <p className="text-sm font-extrabold text-rose-600">(040) 2354-4355</p>
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <PhoneCall className="w-4 h-4 sm:w-5 sm:h-5 text-rose-500 group-hover:scale-110 transition-transform shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[11px] sm:text-xs font-bold text-foreground truncate">Blue Cross of Hyderabad</p>
+                <p className="text-xs sm:text-sm font-extrabold text-rose-600">(040) 2354-4355</p>
               </div>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 uppercase">
+            <span className="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 uppercase shrink-0">
               24/7 ER
             </span>
           </a>
 
           <a
             href="tel:+919394085852"
-            className="flex items-center justify-between p-4 rounded-xl bg-card border border-rose-500/20 hover:border-rose-500 transition group shadow-sm"
+            className="flex items-center justify-between p-3.5 sm:p-4 rounded-xl bg-card border border-rose-500/20 hover:border-rose-500 transition group shadow-sm gap-2"
           >
-            <div className="flex items-center gap-3">
-              <PhoneCall className="w-5 h-5 text-rose-500 group-hover:scale-110 transition-transform" />
-              <div>
-                <p className="text-xs font-bold text-foreground">Hyderabad Rescue Dispatch</p>
-                <p className="text-sm font-extrabold text-rose-600">+91 93940 85852</p>
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <PhoneCall className="w-4 h-4 sm:w-5 sm:h-5 text-rose-500 group-hover:scale-110 transition-transform shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[11px] sm:text-xs font-bold text-foreground truncate">Hyderabad Rescue Dispatch</p>
+                <p className="text-xs sm:text-sm font-extrabold text-rose-600">+91 93940 85852</p>
               </div>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 uppercase">
+            <span className="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 uppercase shrink-0">
               Rescue
             </span>
           </a>
 
           <button
             onClick={() => navigate('/lost-found')}
-            className="flex items-center justify-between p-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition group shadow-sm"
+            className="flex items-center justify-between p-3.5 sm:p-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition group shadow-sm gap-2"
           >
-            <div className="flex items-center gap-3">
-              <ShieldAlert className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
-              <div className="text-left">
-                <p className="text-xs font-bold opacity-90">Pet Missing / Lost?</p>
-                <p className="text-sm font-extrabold">Broadcast SOS Alert</p>
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <ShieldAlert className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:scale-110 transition-transform shrink-0" />
+              <div className="text-left min-w-0">
+                <p className="text-[11px] sm:text-xs font-bold opacity-90 truncate">Pet Missing / Lost?</p>
+                <p className="text-xs sm:text-sm font-extrabold truncate">Broadcast SOS Alert</p>
               </div>
             </div>
-            <ArrowRight className="w-4 h-4 opacity-80" />
+            <ArrowRight className="w-4 h-4 opacity-80 shrink-0" />
           </button>
         </div>
       </div>
