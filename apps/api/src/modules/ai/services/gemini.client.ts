@@ -15,13 +15,72 @@ import type {
 const GEMINI_BASE_ENDPOINT =
   'https://generativelanguage.googleapis.com/v1beta/models';
 
-// Model fallback chain — ordered by capability (highest first).
-// If a model is overloaded (503) or rate-limited (429), the next model is tried automatically.
+// Model fallback chain — ordered by capability and availability.
+// If a model is overloaded (503), rate-limited (429), or deprecated (404), the next model is tried automatically.
 const GEMINI_MODEL_CHAIN = [
-  env.GEMINI_MODEL || 'gemini-3.7-flash', // Primary (from env)
-  'gemini-3.6-flash',                     // First fallback
-  'gemini-flash-lite-latest',             // Lightweight fallback
+  env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
+  'gemini-3.5-flash-lite',
+  'gemini-3.8-flash',
+  'gemini-3.5-flash',
+  'gemini-3.1-flash-lite',
+  'gemini-flash-lite-latest',
 ];
+
+import { BadRequestError } from '../../../shared/errors/AppError';
+
+export type DetectedSpecies = 'DOG' | 'CAT' | 'OTHER_ANIMAL' | 'PERSON' | 'OBJECT' | 'UNKNOWN';
+
+export interface ValidatedImagePayload {
+  mimeType: string;
+  base64Data: string;
+}
+
+export function validateImagePayload(input: BreedScanInput): ValidatedImagePayload | null {
+  if (input.imageBase64) {
+    const raw = input.imageBase64.trim();
+    let mimeType = 'image/jpeg';
+    let base64Data = raw;
+
+    const dataUriMatch = raw.match(/^data:([A-Za-z0-9+/.-]+);base64,(.+)$/);
+    if (dataUriMatch) {
+      mimeType = dataUriMatch[1].toLowerCase();
+      base64Data = dataUriMatch[2].trim();
+    }
+
+    const ALLOWED_MIMES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!ALLOWED_MIMES.includes(mimeType)) {
+      throw new BadRequestError(`Unsupported image format: ${mimeType}. Please upload a JPEG, PNG, or WebP image.`);
+    }
+
+    const buffer = Buffer.from(base64Data, 'base64');
+    if (buffer.length < 200) {
+      throw new BadRequestError('Image data is too small or corrupted to contain a recognizable subject.');
+    }
+    const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+    if (buffer.length > MAX_SIZE_BYTES) {
+      throw new BadRequestError('Image exceeds the maximum allowed size of 10MB.');
+    }
+
+    return {
+      mimeType: mimeType === 'image/jpg' ? 'image/jpeg' : mimeType,
+      base64Data,
+    };
+  }
+
+  if (input.imageUrl) {
+    try {
+      const parsedUrl = new URL(input.imageUrl);
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        throw new BadRequestError('Image URL must use http or https protocol.');
+      }
+    } catch {
+      throw new BadRequestError('Invalid image URL format.');
+    }
+    return null;
+  }
+
+  throw new BadRequestError('Either an image URL or image base64 data must be provided.');
+}
 
 export const geminiClient = {
   isConfigured(): boolean {
@@ -93,66 +152,154 @@ Additional Clinical Notes: ${input.additionalNotes ?? 'None'}`;
   },
 
   /**
-   * Breed identification from visual features or base64 photo via Gemini multimodal vision.
+   * Multimodal Breed & Subject Identification using Gemini Vision.
+   * Classifies primary subject into DOG, CAT, OTHER_ANIMAL, PERSON, OBJECT, or UNKNOWN.
+   * Identifies breeds strictly for dogs and cats based ONLY on observable visual evidence.
    */
-  async identifyBreed(input: BreedScanInput): Promise<Partial<BreedScanResult> | null> {
+  async identifyBreed(
+    input: BreedScanInput,
+    validatedImage?: ValidatedImagePayload | null
+  ): Promise<Partial<BreedScanResult> | null> {
     if (!this.isConfigured()) {
-      logger.warn('[GeminiClient] identifyBreed skipped — GEMINI_API_KEY not configured');
+      logger.warn('[BreedIdentifier] identifyBreed skipped — GEMINI_API_KEY not configured');
       return null;
     }
-    logger.info('[GeminiClient] identifyBreed called', {
-      model: this.getModel(),
+
+    logger.info('[BreedIdentifier] Gemini request started', {
       hasImageBase64: Boolean(input.imageBase64),
       hasImageUrl: Boolean(input.imageUrl),
     });
 
-    const systemInstruction = `You are PetVerse AI, a specialized veterinary breed recognition and genetics model.
-Analyze the pet's characteristics. Return ONLY a valid JSON object matching this schema:
-{
-  "species": "${input.species}",
-  "primaryBreed": string,
-  "confidence": number (between 70 and 99.5),
-  "secondaryBreeds": [{"breed": string, "confidence": number}],
-  "characteristics": {
-    "energyLevel": string,
-    "groomingNeeds": string,
+    const systemInstruction = `You are PetVerse AI, an expert veterinary multimodal classification system.
+Your job is to accurately identify whether an image contains a domestic dog, domestic cat, other animal, person, object, or unknown subject, and if and only if it is a dog or cat, identify its breed.
+
+RULES:
+1. PRIMARY SUBJECT CLASSIFICATION:
+Classify the primary subject into EXACTLY ONE category:
+- "DOG": A domestic dog (canine).
+- "CAT": A domestic cat (feline).
+- "OTHER_ANIMAL": Any animal other than a domestic dog or cat (such as a bird, rabbit, reptile, farm animal, horse, wildlife, etc.).
+- "PERSON": A human being, human face, portrait, selfie, or person.
+- "OBJECT": Inanimate object, vehicle, car, furniture, food, building, screen, screenshot, document, graphic, landscape, or artwork.
+- "UNKNOWN": Unclear, blurry, dark, cropped, empty, ambiguous, or unrecognizable.
+
+2. MULTIPLE ANIMALS:
+If multiple animals are present and there is no single clear primary dog or cat subject:
+- species: "UNKNOWN"
+- isPetSupported: false
+- breed: null
+- explanation: "Multiple animals were detected. Please upload a photo containing one dog or cat for more accurate breed identification."
+
+3. NON-DOG / NON-CAT / UNSUPPORTED HANDLING:
+If the primary subject is NOT a single domestic DOG or CAT:
+- isPetSupported: MUST be false
+- breed: MUST be null. NEVER guess, hallucinate, or return a breed (NEVER return Golden Retriever or any breed).
+- confidence: A decimal between 0.70 and 0.99 reflecting certainty of this subject classification.
+- uncertain: false
+- explanation: State clearly what was detected:
+  * For PERSON: "This image appears to contain a person, not a dog or cat. Please upload a clear photo of a dog or cat for breed identification."
+  * For OBJECT: "This image appears to contain an object, vehicle, or screen, not a dog or cat. Please upload a clear photo of a dog or cat for breed identification."
+  * For OTHER_ANIMAL: "This image appears to contain another type of animal. Breed identification is currently supported for dogs and cats."
+  * For UNKNOWN: "I couldn't confidently identify a dog or cat in this image. Please upload a clear photo showing the animal."
+- characteristics: MUST be null
+- secondaryBreeds: MUST be []
+- healthConsiderations: MUST be []
+- careTips: MUST be []
+
+4. FOR DOG OR CAT (isPetSupported: true):
+- breed: Most likely breed or mix based ONLY on visual evidence.
+  * Support common, rare, and Indian breeds when visually supported (e.g., Indian Pariah Dog / Indian Native Dog, Rajapalayam, Mudhol Hound, Chippiparai, Kombai, Indian Spitz, Labrador Retriever, Golden Retriever, German Shepherd, Beagle, Pug, Shih Tzu, Husky, Boxer, Doberman, Persian, Siamese, Bengal, Maine Coon, Indian Domestic Cat).
+  * If the animal appears to be a mixed breed, return "Mixed Breed" or "Likely mixed breed — possible [Breed] mix". Do NOT force into a purebred classification.
+  * NEVER fabricate or default to Golden Retriever or any predetermined breed without visual evidence.
+- confidence: Decimal between 0.0 and 1.0 (e.g. 0.91, 0.48). NEVER manufacture a high confidence score.
+- uncertain: Set to true if confidence is low (< 0.65) or if traits are mixed/ambiguous, otherwise false.
+- explanation: Concrete visual evidence explaining head shape, ears, coat texture, coloring, and body proportions.
+- characteristics:
+  {
+    "energyLevel": "Low" | "Moderate" | "High",
+    "groomingNeeds": "Low" | "Moderate" | "High",
     "temperament": string[],
-    "typicalWeightRangeKg": {"min": number, "max": number},
-    "lifeExpectancyYears": {"min": number, "max": number}
-  },
-  "healthConsiderations": string[],
-  "careTips": string[]
+    "typicalWeightRangeKg": { "min": number, "max": number },
+    "lifeExpectancyYears": { "min": number, "max": number },
+    "visualTraits": string[]
+  }
+- secondaryBreeds: [{ "breed": string, "confidence": number }]
+- healthConsiderations: string[]
+- careTips: string[]
+
+RETURN ONLY VALID JSON MATCHING:
+{
+  "species": "DOG" | "CAT" | "OTHER_ANIMAL" | "PERSON" | "OBJECT" | "UNKNOWN",
+  "isPetSupported": boolean,
+  "breed": string | null,
+  "confidence": number,
+  "uncertain": boolean,
+  "explanation": string,
+  "characteristics": object | null,
+  "secondaryBreeds": array,
+  "healthConsiderations": array,
+  "careTips": array
 }`;
 
     try {
       const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [];
 
-      if (input.imageBase64) {
-        const matches = input.imageBase64.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
-        if (matches && matches.length === 3) {
-          parts.push({
-            inlineData: {
-              mimeType: matches[1],
-              data: matches[2],
-            },
+      let imageToUse = validatedImage;
+      if (!imageToUse && input.imageBase64) {
+        imageToUse = validateImagePayload(input);
+      } else if (!imageToUse && input.imageUrl) {
+        try {
+          const fetchRes = await fetch(input.imageUrl);
+          if (fetchRes.ok) {
+            const arr = await fetchRes.arrayBuffer();
+            const mime = fetchRes.headers.get('content-type') || 'image/jpeg';
+            imageToUse = {
+              mimeType: mime.split(';')[0],
+              base64Data: Buffer.from(arr).toString('base64'),
+            };
+          }
+        } catch (fetchErr) {
+          logger.warn('[BreedIdentifier] Could not download image URL for vision scan', {
+            error: fetchErr instanceof Error ? fetchErr.message : 'Unknown',
           });
         }
       }
 
+      if (imageToUse) {
+        parts.push({
+          inlineData: {
+            mimeType: imageToUse.mimeType,
+            data: imageToUse.base64Data,
+          },
+        });
+      }
+
       parts.push({
-        text: `${systemInstruction}\n\nSpecies: ${input.species}. ${input.imageUrl ? `Image URL: ${input.imageUrl}` : 'Photo provided in visual payload.'}`,
+        text: `${systemInstruction}\n\nAnalyze the primary subject in the image and return the structured JSON object.`,
       });
 
-      const response = await this._callGemini([{ role: 'user', parts }]);
-      if (!response) return null;
-      logger.info('[GeminiClient] Raw breed scan response (first 200 chars)', {
-        preview: response.slice(0, 200),
+      const response = await this._callGemini([{ role: 'user', parts }], 0, {
+        responseMimeType: 'application/json',
+        temperature: 0.1,
       });
+
+      if (!response) {
+        logger.warn('[BreedIdentifier] Gemini returned empty response');
+        return null;
+      }
+
       const cleanJson = this._extractJson(response);
-      return JSON.parse(cleanJson) as Partial<BreedScanResult>;
+      const parsed = JSON.parse(cleanJson) as Record<string, any>;
+
+      logger.info('[BreedIdentifier] Gemini response received');
+      logger.info(`[BreedIdentifier] Classification: ${parsed.species}`);
+      logger.info(`[BreedIdentifier] Breed: ${parsed.breed ?? 'None'}`);
+      logger.info(`[BreedIdentifier] Confidence: ${parsed.confidence}`);
+
+      return parsed as Partial<BreedScanResult>;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
-      logger.warn('[GeminiClient] Breed scan inference failed', { error: message });
+      logger.warn('[BreedIdentifier] Breed scan inference failed', { error: message });
       return null;
     }
   },
@@ -203,7 +350,11 @@ CRITICAL VETERINARY BOUNDARIES:
 
   // ─── Private HTTP Helper ─────────────────────────────────
 
-  async _callGemini(contents: any[], modelIndex = 0): Promise<string | null> {
+  async _callGemini(
+    contents: any[],
+    modelIndex = 0,
+    generationConfigOverride?: Record<string, unknown>
+  ): Promise<string | null> {
     if (modelIndex >= GEMINI_MODEL_CHAIN.length) {
       logger.warn('[GeminiClient] All models in chain exhausted — no response available');
       return null;
@@ -225,6 +376,7 @@ CRITICAL VETERINARY BOUNDARIES:
             topK: 40,
             topP: 0.95,
             maxOutputTokens: 1024,
+            ...generationConfigOverride,
           },
         }),
         signal: controller.signal,
@@ -232,16 +384,16 @@ CRITICAL VETERINARY BOUNDARIES:
 
       clearTimeout(timeout);
 
-      // Model overloaded or rate-limited — try next model in chain
-      if (res.status === 503 || res.status === 429) {
+      // Model overloaded (503), rate-limited (429), or deprecated (404) — try next model in chain
+      if (res.status === 503 || res.status === 429 || res.status === 404) {
         const nextModel = GEMINI_MODEL_CHAIN[modelIndex + 1];
-        logger.warn('[GeminiClient] Model overloaded, trying next in chain', {
+        logger.warn('[GeminiClient] Model unavailable, trying next in chain', {
           failedModel: model,
           nextModel: nextModel ?? 'none (chain exhausted)',
           status: res.status,
         });
-        await new Promise((r) => setTimeout(r, 800));
-        return this._callGemini(contents, modelIndex + 1);
+        await new Promise((r) => setTimeout(r, 600));
+        return this._callGemini(contents, modelIndex + 1, generationConfigOverride);
       }
 
       if (!res.ok) {
@@ -270,7 +422,7 @@ CRITICAL VETERINARY BOUNDARIES:
           timedOutModel: model,
           nextModel,
         });
-        return this._callGemini(contents, modelIndex + 1);
+        return this._callGemini(contents, modelIndex + 1, generationConfigOverride);
       }
       throw err;
     }

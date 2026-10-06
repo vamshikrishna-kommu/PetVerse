@@ -9,14 +9,16 @@ export const symptomAnalysisSchema = z.object({
   additionalNotes: z.string().max(1000).optional(),
 });
 
-export const breedScanSchema = z.object({
-  species: z.enum(['dog', 'cat']).default('dog'),
-  imageUrl: z.string().url().optional(),
-  imageBase64: z.string().optional(),
-}).refine((data) => data.imageUrl || data.imageBase64, {
-  message: 'Either an image URL or image base64 data must be provided',
-  path: ['imageUrl'],
-});
+export const breedScanSchema = z
+  .object({
+    species: z.enum(['dog', 'cat', 'auto']).default('auto').optional(),
+    imageUrl: z.string().url().optional(),
+    imageBase64: z.string().optional(),
+  })
+  .refine((data) => Boolean(data.imageUrl || data.imageBase64), {
+    message: 'Either an image URL or image base64 data must be provided',
+    path: ['imageUrl'],
+  });
 
 export const dietRecommendationSchema = z.object({
   species: z.enum(['dog', 'cat']).default('dog'),

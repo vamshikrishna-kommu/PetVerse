@@ -60,35 +60,279 @@ describe('Phase 4 — AI Service Clinical Safety & Recommendations', () => {
     });
   });
 
-  describe('Breed Identification & Health Insights', () => {
-    it('should identify breed with confidence score, characteristics, and disclaimer', async () => {
+  describe('Breed Identification & Multimodal Classification', () => {
+    it('1. Dog image -> dog breed result', async () => {
       jest.spyOn(geminiClient, 'identifyBreed').mockResolvedValueOnce({
-        primaryBreed: 'Golden Retriever',
-        confidence: 94,
-        secondaryBreeds: [{ breed: 'Labrador Retriever', confidence: 6 }],
+        species: 'DOG',
+        isPetSupported: true,
+        breed: 'Labrador Retriever',
+        confidence: 0.92,
+        uncertain: false,
+        explanation: 'The broad head, short dense coat, and tail structure are characteristic of a Labrador Retriever.',
         characteristics: {
           energyLevel: 'High',
           groomingNeeds: 'Moderate',
-          temperament: ['Friendly', 'Intelligent', 'Devoted'],
-          typicalWeightRangeKg: { min: 25, max: 34 },
+          temperament: ['Friendly', 'Active', 'Gentle'],
+          typicalWeightRangeKg: { min: 25, max: 36 },
           lifeExpectancyYears: { min: 10, max: 12 },
+          visualTraits: ['Broad muzzle', 'Short water-resistant coat'],
         },
-        healthConsiderations: ['Hip Dysplasia', 'Progressive Retinal Atrophy'],
-        careTips: ['Regular brushing twice a week', 'At least 1 hour of daily exercise'],
+        secondaryBreeds: [],
+        healthConsiderations: ['Hip Dysplasia', 'Obesity'],
+        careTips: ['At least 60 mins of daily exercise'],
       });
 
       const result = await aiService.identifyBreed({
-        imageUrl: 'https://example.com/golden-retriever.jpg',
-        species: 'dog',
+        imageUrl: 'https://example.com/labrador.jpg',
       });
 
-      expect(result.primaryBreed).toBeDefined();
-      expect(result.confidence).toBeGreaterThan(0);
-      expect(result.confidence).toBeLessThanOrEqual(100);
-      expect(result.characteristics).toBeDefined();
-      expect(result.characteristics.temperament.length).toBeGreaterThan(0);
-      expect(result.healthConsiderations.length).toBeGreaterThan(0);
-      expect(result.disclaimer).toBeDefined();
+      expect(result.species).toBe('DOG');
+      expect(result.isPetSupported).toBe(true);
+      expect(result.breed).toBe('Labrador Retriever');
+      expect(result.confidence).toBe(0.92);
+      expect(result.uncertain).toBe(false);
+      expect(result.explanation).toContain('Labrador Retriever');
+      expect(result.characteristics?.temperament).toContain('Friendly');
+    });
+
+    it('2. Cat image -> cat breed result', async () => {
+      jest.spyOn(geminiClient, 'identifyBreed').mockResolvedValueOnce({
+        species: 'CAT',
+        isPetSupported: true,
+        breed: 'Persian',
+        confidence: 0.89,
+        uncertain: false,
+        explanation: 'Round face, shortened muzzle, and long flowing coat are consistent with a Persian cat.',
+        characteristics: {
+          energyLevel: 'Low',
+          groomingNeeds: 'High',
+          temperament: ['Quiet', 'Docile', 'Affectionate'],
+          typicalWeightRangeKg: { min: 3, max: 6 },
+          lifeExpectancyYears: { min: 12, max: 17 },
+          visualTraits: ['Brachycephalic facial structure', 'Long dense fur'],
+        },
+        secondaryBreeds: [],
+        healthConsiderations: ['Polycystic Kidney Disease'],
+        careTips: ['Daily coat brushing required'],
+      });
+
+      const result = await aiService.identifyBreed({
+        imageUrl: 'https://example.com/persian.jpg',
+      });
+
+      expect(result.species).toBe('CAT');
+      expect(result.isPetSupported).toBe(true);
+      expect(result.breed).toBe('Persian');
+      expect(result.confidence).toBe(0.89);
+    });
+
+    it('3. Person image -> PERSON / unsupported (no hallucinated breed)', async () => {
+      jest.spyOn(geminiClient, 'identifyBreed').mockResolvedValueOnce({
+        species: 'PERSON',
+        isPetSupported: false,
+        breed: null,
+        confidence: 0.98,
+        uncertain: false,
+        explanation: 'This image appears to contain a person, not a dog or cat. Please upload a clear photo of a dog or cat for breed identification.',
+        characteristics: null,
+        secondaryBreeds: [],
+        healthConsiderations: [],
+        careTips: [],
+      });
+
+      const result = await aiService.identifyBreed({
+        imageUrl: 'https://example.com/selfie.jpg',
+      });
+
+      expect(result.species).toBe('PERSON');
+      expect(result.isPetSupported).toBe(false);
+      expect(result.breed).toBeNull();
+      expect(result.breed).not.toBe('Golden Retriever');
+      expect(result.explanation).toMatch(/person/i);
+    });
+
+    it('4. Car/object image -> OBJECT / unsupported', async () => {
+      jest.spyOn(geminiClient, 'identifyBreed').mockResolvedValueOnce({
+        species: 'OBJECT',
+        isPetSupported: false,
+        breed: null,
+        confidence: 0.99,
+        uncertain: false,
+        explanation: 'This image appears to contain a vehicle, not a dog or cat.',
+        characteristics: null,
+        secondaryBreeds: [],
+        healthConsiderations: [],
+        careTips: [],
+      });
+
+      const result = await aiService.identifyBreed({
+        imageUrl: 'https://example.com/car.jpg',
+      });
+
+      expect(result.species).toBe('OBJECT');
+      expect(result.isPetSupported).toBe(false);
+      expect(result.breed).toBeNull();
+      expect(result.explanation).toMatch(/vehicle|object/i);
+    });
+
+    it('5. Bird image -> OTHER_ANIMAL / unsupported', async () => {
+      jest.spyOn(geminiClient, 'identifyBreed').mockResolvedValueOnce({
+        species: 'OTHER_ANIMAL',
+        isPetSupported: false,
+        breed: null,
+        confidence: 0.95,
+        uncertain: false,
+        explanation: 'This image appears to contain another type of animal. Breed identification is currently supported for dogs and cats.',
+        characteristics: null,
+        secondaryBreeds: [],
+        healthConsiderations: [],
+        careTips: [],
+      });
+
+      const result = await aiService.identifyBreed({
+        imageUrl: 'https://example.com/parrot.jpg',
+      });
+
+      expect(result.species).toBe('OTHER_ANIMAL');
+      expect(result.isPetSupported).toBe(false);
+      expect(result.breed).toBeNull();
+      expect(result.explanation).toMatch(/another type of animal/i);
+    });
+
+    it('6. Blurry/invalid image -> UNKNOWN', async () => {
+      jest.spyOn(geminiClient, 'identifyBreed').mockResolvedValueOnce({
+        species: 'UNKNOWN',
+        isPetSupported: false,
+        breed: null,
+        confidence: 0.85,
+        uncertain: true,
+        explanation: "I couldn't confidently identify a dog or cat in this image. Please upload a clear photo showing the animal.",
+        characteristics: null,
+        secondaryBreeds: [],
+        healthConsiderations: [],
+        careTips: [],
+      });
+
+      const result = await aiService.identifyBreed({
+        imageUrl: 'https://example.com/blurry.jpg',
+      });
+
+      expect(result.species).toBe('UNKNOWN');
+      expect(result.isPetSupported).toBe(false);
+      expect(result.breed).toBeNull();
+      expect(result.explanation).toMatch(/couldn't confidently identify/i);
+    });
+
+    it('7. Multiple animals -> appropriate response asking for single pet', async () => {
+      jest.spyOn(geminiClient, 'identifyBreed').mockResolvedValueOnce({
+        species: 'UNKNOWN',
+        isPetSupported: false,
+        breed: null,
+        confidence: 0.88,
+        uncertain: true,
+        explanation: 'Multiple animals were detected. Please upload a photo containing one dog or cat for more accurate breed identification.',
+        characteristics: null,
+        secondaryBreeds: [],
+        healthConsiderations: [],
+        careTips: [],
+      });
+
+      const result = await aiService.identifyBreed({
+        imageUrl: 'https://example.com/two-dogs.jpg',
+      });
+
+      expect(result.isPetSupported).toBe(false);
+      expect(result.breed).toBeNull();
+      expect(result.explanation).toContain('Multiple animals were detected');
+    });
+
+    it('8. Mixed breed -> mixed breed response', async () => {
+      jest.spyOn(geminiClient, 'identifyBreed').mockResolvedValueOnce({
+        species: 'DOG',
+        isPetSupported: true,
+        breed: 'Likely mixed breed — possible Labrador mix',
+        confidence: 0.62,
+        uncertain: true,
+        explanation: 'Ear set and head profile suggest Labrador ancestry, but body conformation indicates mixed heritage.',
+        characteristics: {
+          energyLevel: 'Moderate',
+          groomingNeeds: 'Moderate',
+          temperament: ['Friendly', 'Playful'],
+          typicalWeightRangeKg: { min: 18, max: 28 },
+          lifeExpectancyYears: { min: 11, max: 14 },
+          visualTraits: ['Semi-drop ears', 'Mixed coat pattern'],
+        },
+        secondaryBreeds: [{ breed: 'Labrador Retriever', confidence: 55 }],
+        healthConsiderations: [],
+        careTips: ['Regular exercise and balanced nutrition'],
+      });
+
+      const result = await aiService.identifyBreed({
+        imageUrl: 'https://example.com/mix.jpg',
+      });
+
+      expect(result.species).toBe('DOG');
+      expect(result.isPetSupported).toBe(true);
+      expect(result.breed).toMatch(/mixed breed/i);
+      expect(result.uncertain).toBe(true);
+    });
+
+    it('9. Low-confidence classification -> uncertain result', async () => {
+      jest.spyOn(geminiClient, 'identifyBreed').mockResolvedValueOnce({
+        species: 'DOG',
+        isPetSupported: true,
+        breed: 'Indian Pariah Dog / Indian Native Dog',
+        confidence: 0.48,
+        uncertain: true,
+        explanation: 'Wedge-shaped head and pointed ears resemble Indian native dogs, but low resolution limits confidence.',
+        characteristics: null,
+        secondaryBreeds: [],
+        healthConsiderations: [],
+        careTips: [],
+      });
+
+      const result = await aiService.identifyBreed({
+        imageUrl: 'https://example.com/desi-dog.jpg',
+      });
+
+      expect(result.confidence).toBe(0.48);
+      expect(result.uncertain).toBe(true);
+    });
+
+    it('10. Gemini unavailable -> transparent graceful error', async () => {
+      jest.spyOn(geminiClient, 'identifyBreed').mockResolvedValueOnce(null);
+
+      const result = await aiService.identifyBreed({
+        imageUrl: 'https://example.com/dog.jpg',
+      });
+
+      expect(result.isPetSupported).toBe(false);
+      expect(result.breed).toBeNull();
+      expect(result.explanation).toMatch(/temporarily unavailable/i);
+    });
+
+    it('11. Gemini malformed response / throws -> safe error', async () => {
+      jest.spyOn(geminiClient, 'identifyBreed').mockRejectedValueOnce(new Error('Network crash'));
+
+      const result = await aiService.identifyBreed({
+        imageUrl: 'https://example.com/dog.jpg',
+      });
+
+      expect(result.isPetSupported).toBe(false);
+      expect(result.breed).toBeNull();
+      expect(result.explanation).toMatch(/temporarily unavailable/i);
+    });
+
+    it('12. No hardcoded Golden Retriever fallback on failure or non-pet', async () => {
+      jest.spyOn(geminiClient, 'identifyBreed').mockResolvedValueOnce(null);
+
+      const result = await aiService.identifyBreed({
+        imageUrl: 'https://example.com/random.jpg',
+      });
+
+      expect(result.breed).not.toBe('Golden Retriever');
+      expect(result.primaryBreed).not.toBe('Golden Retriever');
+      expect(result.isPetSupported).toBe(false);
     });
   });
 

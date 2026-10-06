@@ -1,12 +1,14 @@
 import { env, isConfiguredCredential } from '../../../config/env';
 import { logger } from '../../../shared/utils/logger';
-import { geminiClient } from './gemini.client';
+import { geminiClient, validateImagePayload, type DetectedSpecies } from './gemini.client';
 import type {
   SymptomAnalysisInput,
   BreedScanInput,
   DietRecommendationInput,
   ChatAssistantInput,
 } from '../schemas/ai.schemas';
+
+export type { DetectedSpecies };
 
 export interface SymptomAnalysisResult {
   triageUrgency: 'EMERGENCY' | 'URGENT' | 'ROUTINE';
@@ -21,17 +23,22 @@ export interface SymptomAnalysisResult {
 }
 
 export interface BreedScanResult {
-  species: 'dog' | 'cat';
-  primaryBreed: string;
+  species: DetectedSpecies;
+  isPetSupported: boolean;
+  breed: string | null;
+  primaryBreed: string; // backwards compatibility alias for breed
   confidence: number;
-  secondaryBreeds: Array<{ breed: string; confidence: number }>;
+  uncertain: boolean;
+  explanation: string;
   characteristics: {
-    energyLevel: string;
-    groomingNeeds: string;
-    temperament: string[];
-    typicalWeightRangeKg: { min: number; max: number };
-    lifeExpectancyYears: { min: number; max: number };
-  };
+    energyLevel?: string;
+    groomingNeeds?: string;
+    temperament?: string[];
+    typicalWeightRangeKg?: { min: number; max: number };
+    lifeExpectancyYears?: { min: number; max: number };
+    visualTraits?: string[];
+  } | null;
+  secondaryBreeds: Array<{ breed: string; confidence: number }>;
   healthConsiderations: string[];
   careTips: string[];
   disclaimer: string;
@@ -160,78 +167,69 @@ export const aiService = {
   },
 
   /**
-   * Breed identification from visual features.
-   * Falls back to visual pattern recognizer if microservice is offline.
+   * Multimodal breed and subject identification.
+   * Classifies primary subject into DOG, CAT, OTHER_ANIMAL, PERSON, OBJECT, or UNKNOWN.
+   * If non-dog/cat, returns isPetSupported: false and breed: null without hallucination.
    */
   async identifyBreed(input: BreedScanInput): Promise<BreedScanResult> {
     const startTime = Date.now();
-    logger.info('[AIService] Initiating breed scan', {
+    logger.info('[AIService] Initiating multimodal breed scan', {
       geminiConfigured: isConfiguredCredential(env.GEMINI_API_KEY),
-      species: input.species,
       hasImageUrl: Boolean(input.imageUrl),
       hasImageBase64: Boolean(input.imageBase64),
     });
 
+    // 1. Validate image format, MIME, and bounds
+    const validatedImage = validateImagePayload(input);
+
     try {
-      // 1. Attempt call to Gemini AI Client
-      const geminiResult = await geminiClient.identifyBreed(input);
-      if (geminiResult && geminiResult.primaryBreed) {
+      // 2. Multimodal classification via Gemini Vision
+      const geminiResult = await geminiClient.identifyBreed(input, validatedImage);
+      if (geminiResult && geminiResult.species) {
+        const isSupported = Boolean(geminiResult.isPetSupported);
+        const detectedBreed = isSupported ? (geminiResult.breed || geminiResult.primaryBreed || null) : null;
+        const rawConfidence = typeof geminiResult.confidence === 'number'
+          ? (geminiResult.confidence > 1 ? geminiResult.confidence / 100 : geminiResult.confidence)
+          : (isSupported ? 0.88 : 0.95);
+
         return {
-          species: input.species,
-          primaryBreed: geminiResult.primaryBreed,
-          confidence: geminiResult.confidence || 88,
-          secondaryBreeds: geminiResult.secondaryBreeds || [],
-          characteristics: geminiResult.characteristics || {
-            energyLevel: 'Moderate',
-            groomingNeeds: 'Moderate',
-            temperament: ['Alert', 'Friendly'],
-            typicalWeightRangeKg: { min: 10, max: 25 },
-            lifeExpectancyYears: { min: 11, max: 14 },
-          },
-          healthConsiderations: geminiResult.healthConsiderations || [],
-          careTips: geminiResult.careTips || [],
+          species: geminiResult.species as DetectedSpecies,
+          isPetSupported: isSupported,
+          breed: detectedBreed,
+          primaryBreed: detectedBreed || '',
+          confidence: Math.round(rawConfidence * 100) / 100,
+          uncertain: Boolean(geminiResult.uncertain),
+          explanation: geminiResult.explanation || (isSupported
+            ? 'Visual classification completed based on observable features.'
+            : 'Subject classified as unsupported for breed identification.'),
+          characteristics: isSupported
+            ? (geminiResult.characteristics || {
+                energyLevel: 'Moderate',
+                groomingNeeds: 'Moderate',
+                temperament: ['Alert', 'Friendly'],
+                typicalWeightRangeKg: { min: 10, max: 25 },
+                lifeExpectancyYears: { min: 11, max: 14 },
+                visualTraits: [],
+              })
+            : null,
+          secondaryBreeds: isSupported ? (geminiResult.secondaryBreeds || []) : [],
+          healthConsiderations: isSupported ? (geminiResult.healthConsiderations || []) : [],
+          careTips: isSupported ? (geminiResult.careTips || []) : [],
           disclaimer:
             'Breed prediction is estimated by visual model analysis. DNA genetic tests provide 100% definitive heritage.',
           generatedBy: 'external_ai_model',
         };
       }
-
-      // 2. Attempt call to external microservice
-      if (env.AI_SERVICE_URL && env.AI_SERVICE_URL !== 'http://localhost:8000') {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-
-        const response = await fetch(`${env.AI_SERVICE_URL}/v1/breed-scan`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(env.AI_SERVICE_INTERNAL_KEY ? { 'X-Internal-Key': env.AI_SERVICE_INTERNAL_KEY } : {}),
-          },
-          body: JSON.stringify(input),
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeout);
-
-        if (response.ok) {
-          const data = (await response.json()) as Partial<BreedScanResult>;
-          return {
-            ...data,
-            disclaimer:
-              'Breed prediction is estimated by visual model analysis. DNA genetic tests provide 100% definitive heritage.',
-            generatedBy: 'external_ai_model',
-          } as BreedScanResult;
-        }
-      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
-      logger.warn('[AIService] Breed scan failed — Gemini unavailable and no external service configured', {
+      logger.warn('[AIService] Multimodal breed scan error', {
         latencyMs: Date.now() - startTime,
         error: message,
       });
     }
 
-    return this._breedFeatureFallback(input);
+    // 3. Fallback when AI service is unavailable — NEVER fabricate Golden Retriever or any breed
+    return this._breedUnavailableFallback();
   },
 
   /**
@@ -473,39 +471,28 @@ export const aiService = {
   },
 
   /**
-   * Breed scan fallback — returned only when Gemini is unavailable.
-   * Does NOT fabricate a specific breed; instead surfaces a transparent
-   * service-unavailable message so the UI can prompt the user to try again.
+   * Transparent service-unavailable fallback — returned only when Gemini is unavailable.
+   * Does NOT fabricate a specific breed; clearly informs the user that breed
+   * identification is temporarily unavailable.
    */
-  _breedFeatureFallback(input: BreedScanInput): BreedScanResult {
-    logger.warn('[AIService] Returning breed-scan service-unavailable fallback', {
-      species: input.species,
-      geminiConfigured: isConfiguredCredential(env.GEMINI_API_KEY),
-    });
+  _breedUnavailableFallback(): BreedScanResult {
+    logger.warn('[AIService] Returning breed-scan service-unavailable response');
 
     return {
-      species: input.species,
-      primaryBreed: 'Unable to identify — AI service unavailable',
+      species: 'UNKNOWN',
+      isPetSupported: false,
+      breed: null,
+      primaryBreed: '',
       confidence: 0,
+      uncertain: true,
+      explanation: 'Breed identification is temporarily unavailable. Please try again shortly.',
+      characteristics: null,
       secondaryBreeds: [],
-      characteristics: {
-        energyLevel: 'Unknown',
-        groomingNeeds: 'Unknown',
-        temperament: [],
-        typicalWeightRangeKg: { min: 0, max: 0 },
-        lifeExpectancyYears: { min: 0, max: 0 },
-      },
-      healthConsiderations: [
-        'Breed identification requires the Gemini AI engine to be configured.',
-        'Please ensure GEMINI_API_KEY is set to a valid Google Gemini API key in the server environment.',
-      ],
-      careTips: [
-        'Once the AI engine is configured, upload a clear front-facing photo of your pet for best results.',
-      ],
+      healthConsiderations: [],
+      careTips: [],
       disclaimer:
-        'Breed identification is powered by Gemini vision AI. The service is currently unavailable because the AI engine is not configured. ' +
-        'No breed prediction can be made without a valid API key. DNA genetic tests provide 100% definitive heritage.',
-      generatedBy: 'visual_feature_engine',
+        'Breed prediction is estimated by visual model analysis. DNA genetic tests provide 100% definitive heritage.',
+      generatedBy: 'external_ai_model',
     };
   },
 

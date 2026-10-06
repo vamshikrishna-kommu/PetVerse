@@ -21,26 +21,33 @@ export interface SymptomAnalysisResponse {
   generatedBy: string;
 }
 
+export type DetectedSpecies = 'DOG' | 'CAT' | 'OTHER_ANIMAL' | 'PERSON' | 'OBJECT' | 'UNKNOWN' | 'dog' | 'cat';
+
 export interface BreedScanPayload {
-  species: 'dog' | 'cat';
+  species?: 'dog' | 'cat' | 'auto';
   imageUrl?: string;
   imageBase64?: string;
 }
 
 export interface BreedScanResponse {
-  species: 'dog' | 'cat';
-  primaryBreed: string;
+  species: DetectedSpecies;
+  isPetSupported: boolean;
+  breed: string | null;
+  primaryBreed?: string;
   confidence: number;
-  secondaryBreeds: Array<{ breed: string; confidence: number }>;
-  characteristics: {
-    energyLevel: string;
-    groomingNeeds: string;
-    temperament: string[];
-    typicalWeightRangeKg: { min: number; max: number };
-    lifeExpectancyYears: { min: number; max: number };
-  };
-  healthConsiderations: string[];
-  careTips: string[];
+  uncertain?: boolean;
+  explanation?: string;
+  secondaryBreeds?: Array<{ breed: string; confidence: number }>;
+  characteristics?: {
+    energyLevel?: string;
+    groomingNeeds?: string;
+    temperament?: string[];
+    typicalWeightRangeKg?: { min: number; max: number };
+    lifeExpectancyYears?: { min: number; max: number };
+    visualTraits?: string[];
+  } | null;
+  healthConsiderations?: string[];
+  careTips?: string[];
   disclaimer: string;
   generatedBy: string;
 }
