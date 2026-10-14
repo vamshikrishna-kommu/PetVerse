@@ -15,16 +15,29 @@ import type {
 const GEMINI_BASE_ENDPOINT =
   'https://generativelanguage.googleapis.com/v1beta/models';
 
-// Model fallback chain — ordered by capability and availability.
-// If a model is overloaded (503), rate-limited (429), or deprecated (404), the next model is tried automatically.
+// ─── Model fallback chain ────────────────────────────────────────────────────
+// Ordered by speed and availability. Real Gemini model IDs only.
+// On 503 (overloaded), 429 (rate-limited) or timeout, the next model is tried.
+// 404 is treated as a hard stop for that model (bad key or region restriction),
+// not as a reason to cascade further.
 const GEMINI_MODEL_CHAIN = [
-  env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
-  'gemini-3.5-flash-lite',
-  'gemini-3.8-flash',
-  'gemini-3.5-flash',
-  'gemini-3.1-flash-lite',
-  'gemini-flash-lite-latest',
+  env.GEMINI_MODEL || 'gemini-1.5-flash-8b',
+  'gemini-1.5-flash-8b',
+  'gemini-1.5-flash',
 ];
+
+/**
+ * Hard upper-bound (ms) for the entire Gemini call including all retries.
+ * Must be comfortably below the frontend 15 s Axios timeout so the backend
+ * can return a controlled fallback response before the client gives up.
+ */
+const GEMINI_BUDGET_MS = 11_000;
+
+/** Per-model request timeout (ms). Must be < GEMINI_BUDGET_MS. */
+const GEMINI_PER_MODEL_TIMEOUT_MS = 9_000;
+
+/** Timeout (ms) for downloading an image URL before handing it to Gemini. */
+const GEMINI_IMAGE_FETCH_TIMEOUT_MS = 5_000;
 
 import { BadRequestError } from '../../../shared/errors/AppError';
 
@@ -248,8 +261,12 @@ RETURN ONLY VALID JSON MATCHING:
       if (!imageToUse && input.imageBase64) {
         imageToUse = validateImagePayload(input);
       } else if (!imageToUse && input.imageUrl) {
+        // Bound image download to GEMINI_IMAGE_FETCH_TIMEOUT_MS to avoid
+        // an unbounded network stall inside the AI request pipeline.
+        const imgCtrl = new AbortController();
+        const imgTimeout = setTimeout(() => imgCtrl.abort(), GEMINI_IMAGE_FETCH_TIMEOUT_MS);
         try {
-          const fetchRes = await fetch(input.imageUrl);
+          const fetchRes = await fetch(input.imageUrl, { signal: imgCtrl.signal });
           if (fetchRes.ok) {
             const arr = await fetchRes.arrayBuffer();
             const mime = fetchRes.headers.get('content-type') || 'image/jpeg';
@@ -262,6 +279,8 @@ RETURN ONLY VALID JSON MATCHING:
           logger.warn('[BreedIdentifier] Could not download image URL for vision scan', {
             error: fetchErr instanceof Error ? fetchErr.message : 'Unknown',
           });
+        } finally {
+          clearTimeout(imgTimeout);
         }
       }
 
@@ -353,16 +372,30 @@ CRITICAL VETERINARY BOUNDARIES:
   async _callGemini(
     contents: any[],
     modelIndex = 0,
-    generationConfigOverride?: Record<string, unknown>
+    generationConfigOverride?: Record<string, unknown>,
+    _budgetDeadline?: number
   ): Promise<string | null> {
     if (modelIndex >= GEMINI_MODEL_CHAIN.length) {
       logger.warn('[GeminiClient] All models in chain exhausted — no response available');
       return null;
     }
 
+    // Initialise the hard budget deadline on the first call.
+    const budgetDeadline = _budgetDeadline ?? (Date.now() + GEMINI_BUDGET_MS);
+    const remainingBudget = budgetDeadline - Date.now();
+    if (remainingBudget <= 0) {
+      logger.warn('[GeminiClient] Budget exhausted before reaching model', {
+        modelIndex,
+        model: GEMINI_MODEL_CHAIN[modelIndex],
+      });
+      return null;
+    }
+
     const model = GEMINI_MODEL_CHAIN[modelIndex];
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
+    // Per-model timeout must not exceed the remaining budget.
+    const perModelMs = Math.min(GEMINI_PER_MODEL_TIMEOUT_MS, remainingBudget);
+    const timeout = setTimeout(() => controller.abort(), perModelMs);
 
     try {
       const url = `${this.getEndpointForModel(model)}?key=${env.GEMINI_API_KEY}`;
@@ -384,21 +417,25 @@ CRITICAL VETERINARY BOUNDARIES:
 
       clearTimeout(timeout);
 
-      // Model overloaded (503), rate-limited (429), or deprecated (404) — try next model in chain
-      if (res.status === 503 || res.status === 429 || res.status === 404) {
+      // Model overloaded (503) or rate-limited (429) — try next model in chain.
+      // 404 means the model ID is genuinely not available in this project/region;
+      // do NOT cascade on 404 to avoid wasting budget on known-bad model names.
+      if (res.status === 503 || res.status === 429) {
         const nextModel = GEMINI_MODEL_CHAIN[modelIndex + 1];
         logger.warn('[GeminiClient] Model unavailable, trying next in chain', {
           failedModel: model,
           nextModel: nextModel ?? 'none (chain exhausted)',
           status: res.status,
         });
-        await new Promise((r) => setTimeout(r, 600));
-        return this._callGemini(contents, modelIndex + 1, generationConfigOverride);
+        // Small delay before retry, but cap it so we don't blow the budget.
+        const delayMs = Math.min(400, budgetDeadline - Date.now() - 500);
+        if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
+        return this._callGemini(contents, modelIndex + 1, generationConfigOverride, budgetDeadline);
       }
 
       if (!res.ok) {
         const errorText = await res.text();
-        logger.warn('[GeminiClient] Gemini API HTTP error', {
+        logger.warn('[GeminiClient] Gemini API HTTP error — not retrying', {
           status: res.status,
           model,
           errorText: errorText.slice(0, 300),
@@ -414,15 +451,19 @@ CRITICAL VETERINARY BOUNDARIES:
       return candidateText ? (candidateText as string) : null;
     } catch (err: unknown) {
       clearTimeout(timeout);
-      // If request timed out and more models are available, try the next one
+      // If the per-model request timed out and there is still budget left,
+      // try the next model in the chain.
       const isTimeout = err instanceof Error && err.name === 'AbortError';
-      if (isTimeout && modelIndex + 1 < GEMINI_MODEL_CHAIN.length) {
+      const hasMoreModels = modelIndex + 1 < GEMINI_MODEL_CHAIN.length;
+      const hasBudget = (budgetDeadline - Date.now()) > 1000; // at least 1 s remaining
+      if (isTimeout && hasMoreModels && hasBudget) {
         const nextModel = GEMINI_MODEL_CHAIN[modelIndex + 1];
         logger.warn('[GeminiClient] Model timed out, trying next in chain', {
           timedOutModel: model,
           nextModel,
+          remainingBudgetMs: budgetDeadline - Date.now(),
         });
-        return this._callGemini(contents, modelIndex + 1, generationConfigOverride);
+        return this._callGemini(contents, modelIndex + 1, generationConfigOverride, budgetDeadline);
       }
       throw err;
     }

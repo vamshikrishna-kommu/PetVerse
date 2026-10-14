@@ -26,6 +26,9 @@ async function callRazorpayCreateOrder(params: {
 }): Promise<{ id: string; amount: number; currency: string } | null> {
   if (!isConfiguredCredential(env.RAZORPAY_KEY_ID) || !isConfiguredCredential(env.RAZORPAY_KEY_SECRET)) return null;
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+
   try {
     const credentials = Buffer.from(`${env.RAZORPAY_KEY_ID}:${env.RAZORPAY_KEY_SECRET}`).toString('base64');
 
@@ -41,6 +44,7 @@ async function callRazorpayCreateOrder(params: {
         receipt: params.receipt,
         notes: params.notes,
       }),
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -58,6 +62,8 @@ async function callRazorpayCreateOrder(params: {
     const message = err instanceof Error ? err.message : 'Unknown error';
     logger.warn('[PaymentService] Failed to contact Razorpay API', { error: message });
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -113,6 +119,9 @@ async function callStripeCreateSession(params: {
 }): Promise<{ id: string; url: string } | null> {
   if (!isConfiguredCredential(env.STRIPE_SECRET_KEY)) return null;
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+
   try {
     const body = new URLSearchParams();
     body.append('mode', 'payment');
@@ -136,6 +145,7 @@ async function callStripeCreateSession(params: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: body.toString(),
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -153,6 +163,8 @@ async function callStripeCreateSession(params: {
     const message = err instanceof Error ? err.message : 'Unknown error';
     logger.warn('[PaymentService] Failed to contact Stripe API', { error: message });
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -163,12 +175,16 @@ async function callStripeCreateSession(params: {
 async function verifyStripeSessionStatus(sessionId: string): Promise<boolean> {
   if (!isConfiguredCredential(env.STRIPE_SECRET_KEY)) return true; // In test/dev mode without keys
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+
   try {
     const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
       },
+      signal: controller.signal,
     });
 
     if (!response.ok) return false;
@@ -176,6 +192,8 @@ async function verifyStripeSessionStatus(sessionId: string): Promise<boolean> {
     return data.payment_status === 'paid' || data.status === 'complete';
   } catch {
     return false;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
